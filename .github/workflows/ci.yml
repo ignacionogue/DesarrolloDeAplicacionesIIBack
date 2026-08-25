@@ -1,0 +1,51 @@
+name: Backend CI
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - "release/**"
+      - main
+      - master
+  push:
+    branches:
+      - "codex/**"
+      - develop
+      - "release/**"
+      - main
+      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Test, package and container
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Enable Maven Wrapper
+        run: chmod +x mvnw
+
+      - name: Test and package
+        run: ./mvnw -B -ntp clean verify
+
+      - name: Build container without publishing
+        run: docker build --tag desarrolloappsii-back:${GITHUB_SHA} .
