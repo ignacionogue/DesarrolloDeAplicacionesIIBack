@@ -1,0 +1,31 @@
+{
+  "asOfDate": "2026-09-06",
+  "totalProjects": 8,
+  "activeProjects": 2,
+  "openWorkOrders": 12,
+  "externalWorkOrders": 10,
+  "delayedWorkOrders": 0,
+  "delayedProjects": 0,
+  "averagePhysicalProgress": 25,
+  "estimatedBudget": 8000000.0,
+  "approvedBudget": 6400000.0,
+  "usedBudget": 1600000.0,
+  "budgetProgress": 25,
+  "crewLoads": [
+    {
+      "crewId": 1,
+      "name": "Demo Norte",
+      "openWorkOrders": 2
+    },
+    {
+      "crewId": 2,
+      "name": "Demo Centro",
+      "openWorkOrders": 4
+    },
+    {
+      "crewId": 3,
+      "name": "Demo Sur",
+      "openWorkOrders": 2
+    }
+  ]
+}
