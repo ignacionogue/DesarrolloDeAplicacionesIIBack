@@ -1,5 +1,9 @@
 # Contrato para primera entrega
 
+Actualización de entrega: el esquema se administra con Flyway V1 y Hibernate
+solo valida. Leer README.md y docs/MIGRACIONES.md antes de ejecutar sobre una base
+preexistente. La entrega se revisa mediante feature/* → develop; no implica deploy.
+
 API local: http://localhost:8080/api
 Swagger local: http://localhost:8080/swagger-ui/index.html
 OpenAPI local: http://localhost:8080/v3/api-docs
@@ -208,12 +212,12 @@ puerto, sin rutas. Por defecto: http://localhost:3000,http://localhost:5173.
 Configurar la URL real del front desplegado ademas de las locales. No puede
 confirmarse CORS remoto hasta conocer y probar el dominio. Swagger esta fuera de /api.
 
-Infra debe configurar DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD y opcional
-SERVER_PORT (8080). PostgreSQL es persistente, ddl-auto=update crea/ajusta tablas.
-No usar credenciales locales como datos de despliegue.
+Infra debe configurar DB_URL, DB_USERNAME y DB_PASSWORD. El puerto es PORT o
+SERVER_PORT (8080). PostgreSQL es persistente; Flyway V1 crea el esquema y
+ddl-auto=validate comprueba las entidades. No usar credenciales locales en Azure.
 
 Integracion con develop: se conservan Docker, CI, Actuator y el health check de
-PostgreSQL de DevOps. DB_URL y DB_USERNAME tienen prioridad sobre DB_HOST/DB_USER;
+PostgreSQL de DevOps. DB_URL y DB_USERNAME son obligatorios;
 PORT tiene prioridad sobre SERVER_PORT. DB_PASSWORD es obligatorio y no incluye
 un valor por defecto en Git. /actuator/health mantiene las probes de infraestructura.
 

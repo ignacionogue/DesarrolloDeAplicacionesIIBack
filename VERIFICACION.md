@@ -1,5 +1,13 @@
 # Verificacion local — 6 de septiembre de 2026
 
+## Adaptación al flujo DevOps — 7 de septiembre de 2026
+
+La evidencia vigente para migraciones, pruebas PostgreSQL y empaquetado está en
+docs/DEVOPS-HANDOFF.md. Se reemplazó ddl-auto=update por Flyway V1 + validate.
+13 tests pasan con H2 y otros 13 con PostgreSQL 18.6 temporal; 8 consultas HTTP
+del JAR pasan. Docker local bloqueado por HTTP 500 del motor, antes del build.
+Las secciones siguientes se conservan como registro histórico de la versión previa.
+
 ## Integracion con el repositorio remoto
 
 Base: origin/develop, commit 662ad1e. Se preservaron Docker, CI, Actuator,
