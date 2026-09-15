@@ -18,6 +18,7 @@ public class StreetClosure {
     @Column(nullable = false, length = 300)
     private String location;
     @ElementCollection
+    @CollectionTable(name = "street_closure_affected_sections", joinColumns = @JoinColumn(name = "street_closure_id"))
     @OrderColumn(name = "section_order")
     @Column(nullable = false, length = 300)
     private List<String> affectedSections = new ArrayList<>();

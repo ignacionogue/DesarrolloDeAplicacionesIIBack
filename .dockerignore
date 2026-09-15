@@ -4,3 +4,9 @@
 target
 *.iml
 *.log
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.local-validation
