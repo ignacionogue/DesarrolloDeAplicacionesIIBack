@@ -17,14 +17,16 @@ Usar [.env.example](.env.example) como referencia, nunca subir `.env` real.
 Spring Boot **no carga `.env` automáticamente**: definir variables de entorno
 en la terminal o IDE. En Docker se puede usar `--env-file .env`.
 
-Obligatorias: `DB_URL` (JDBC), `DB_USERNAME`, `DB_PASSWORD`.
+Obligatorias: `DB_URL` (JDBC), `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`,
+`AUTH_USERNAME` y `AUTH_PASSWORD`.
 Ejemplo no sensible de URL: `jdbc:postgresql://localhost:5432/obras_publicas`.
 La contraseña debe proporcionarla el desarrollador local o DevOps en Azure.
 La aplicación no incluye credenciales ni valores alternativos de conexión.
 
 Opcionales: `PORT` (prioridad), `SERVER_PORT` (8080), `DB_POOL_MAX_SIZE` (5),
 `DB_POOL_MIN_IDLE` (0), `DB_CONNECTION_TIMEOUT_MS` (10000),
-`CORS_ALLOWED_ORIGINS` (localhost 3000/5173), `APP_DEMO_ENABLED` (false).
+`CORS_ALLOWED_ORIGINS` (localhost 3000/5173), `APP_DEMO_ENABLED` (false),
+`AUTH_ROLE` (`PERSONAL_OBRAS`) y `JWT_EXPIRATION_MINUTES` (480).
 La carga demo solo inserta catálogos vacíos; no crea tablas ni simula respuestas
 de otros módulos. Para acceso del front por `/api/...` bajo el mismo origen,
 el enrutamiento corresponde a DevOps; no se necesita una URL de backend en el front.
@@ -48,6 +50,7 @@ Hibernate valida el esquema. Para bases preexistentes leer
 
 - Puerto por defecto: 8080.
 - `GET /api/health`: consulta PostgreSQL; 200 con `database: up`, o 503 si falla.
+- `POST /api/auth/login`: recibe `username` y `password`; entrega un JWT con el rol configurado.
 - `GET /actuator/health`: health/probes de infraestructura existentes.
 - `GET /swagger-ui/index.html`: documentación interactiva.
 - `GET /v3/api-docs`: OpenAPI generado desde la versión ejecutada.
@@ -106,4 +109,4 @@ Trabajar en `feature/*` desde `develop` y abrir PR a `develop`; no push directo,
 merge ni despliegue automático desde la PC. Ver [docs/DEVOPS-HANDOFF.md](docs/DEVOPS-HANDOFF.md).
 Docker, pipelines, Azure, permisos y el momento de ejecución de migraciones son
 coordinados con DevOps. Este repositorio entrega el esquema y documenta su impacto.
-Auth, storage de evidencias e integraciones externas siguen pendientes.
+Storage de evidencias e integraciones externas siguen pendientes.
