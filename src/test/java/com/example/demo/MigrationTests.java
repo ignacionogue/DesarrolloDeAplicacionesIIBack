@@ -13,8 +13,8 @@ class MigrationTests {
     @Autowired Flyway flyway;
     @Autowired JdbcTemplate jdbc;
 
-    @Test void versionOneIsAppliedAndSecondMigrationPreservesData() {
-        assertEquals("1", flyway.info().current().getVersion().toString());
+    @Test void latestMigrationIsAppliedAndPreservesData() {
+        assertEquals("2", flyway.info().current().getVersion().toString());
         jdbc.update("INSERT INTO material(nombre, unidad) VALUES (?, ?)", "Migration preservation fixture", "kg");
         var count = jdbc.queryForObject("SELECT COUNT(*) FROM material", Long.class);
         flyway.validate();

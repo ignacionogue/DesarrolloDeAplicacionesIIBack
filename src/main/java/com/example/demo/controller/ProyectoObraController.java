@@ -1,6 +1,7 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.request.ProyectoObraRequest;
+import com.example.demo.dto.request.ProjectApprovalRequest;
 import com.example.demo.dto.response.PageResponse;
 import com.example.demo.dto.response.ProyectoObraResponse;
 import com.example.demo.service.ProyectoObraService;
@@ -55,8 +56,8 @@ public class ProyectoObraController {
 
     @PatchMapping("/{id}/approve")
     @Operation(summary = "PENDIENTE_APROBACION -> APROBADO (dispara publicWorksProjectApproved)")
-    public ResponseEntity<ProyectoObraResponse> aprobar(@PathVariable Long id) {
-        return ResponseEntity.ok(service.aprobar(id));
+    public ResponseEntity<ProyectoObraResponse> aprobar(@PathVariable Long id, @Valid @RequestBody ProjectApprovalRequest request) {
+        return ResponseEntity.ok(service.aprobar(id, request));
     }
 
     @PatchMapping("/{id}/reject")

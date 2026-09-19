@@ -20,6 +20,7 @@ Ningun archivo del front fue modificado.
 | GET | /api/health | 200, {"status":"ok","service":"obras-publicas-backend","database":"up"}; 503 si falla DB |
 | GET | /v3/api-docs | 200, OpenAPI |
 | GET | /swagger-ui/index.html | 200, Swagger UI |
+| POST | /api/auth/login | 200, JWT, usuario y rol |
 | GET | /api/public-works/projects | 200, pagina de proyectos |
 | GET | /api/public-works/projects/{id} | 200, proyecto |
 | POST | /api/public-works/projects | 201, proyecto creado |
@@ -42,10 +43,11 @@ Ningun archivo del front fue modificado.
 | POST | /api/public-works/street-closures | 201, solicitud pendiente |
 | GET / POST | /api/public-works/crews | listado / alta de cuadrilla |
 
-Todos los endpoints minimos pedidos estan implementados localmente. Auth queda
-fuera de esta entrega tecnica: no existen /api/auth/login, /me ni /logout,
-usuarios, tokens o roles aplicados en el servidor. No enviar Authorization.
-El selector de roles del front no equivale a autenticacion.
+Los endpoints bajo `/api/public-works/**` requieren `Authorization: Bearer <JWT>`.
+Obtenerlo con `POST /api/auth/login` enviando `{"username":"...","password":"..."}`.
+El token incluye el rol configurado en `AUTH_ROLE`; credenciales y `JWT_SECRET`
+son variables inyectadas por el entorno y no se versionan. `/api/health` sigue
+siendo público para infraestructura.
 
 ## Paginacion y filtros
 

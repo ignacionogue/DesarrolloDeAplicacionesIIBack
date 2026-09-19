@@ -57,6 +57,9 @@ public class ProyectoObra {
     private Integer estimatedDurationDays;
 
     private Integer approvedDeadlineDays;
+    private LocalDate approvedAt;
+    @Column(length = 1000)
+    private String approvalObservations;
 
     /**
      * PROVISIONAL: persistido como valor simple por ahora. Cuando se implementen
@@ -131,6 +134,16 @@ public class ProyectoObra {
         this.approvalStatus = EstadoAprobacion.PENDIENTE_APROBACION;
     }
 
+    public void aprobar(BigDecimal approvedBudget, Integer approvedDeadlineDays, LocalDate approvedAt, String observations) {
+        this.approvedBudget = approvedBudget;
+        this.approvedDeadlineDays = approvedDeadlineDays;
+        this.approvedAt = approvedAt;
+        this.approvalObservations = observations;
+        this.approvalStatus = EstadoAprobacion.APROBADO;
+        this.activityStatus = EstadoActividad.SIN_INICIAR;
+    }
+
+    /** Compatibilidad para casos internos preexistentes; la API exige los datos de aprobación. */
     public void aprobar() {
         this.approvalStatus = EstadoAprobacion.APROBADO;
         this.activityStatus = EstadoActividad.SIN_INICIAR;
@@ -183,6 +196,8 @@ public class ProyectoObra {
     public Integer getApprovedDeadlineDays() {
         return approvedDeadlineDays;
     }
+    public LocalDate getApprovedAt() { return approvedAt; }
+    public String getApprovalObservations() { return approvalObservations; }
 
     public Integer getPhysicalProgress() {
         return physicalProgress;

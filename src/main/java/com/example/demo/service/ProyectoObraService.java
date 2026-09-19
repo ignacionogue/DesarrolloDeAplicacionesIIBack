@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.request.ProyectoObraRequest;
+import com.example.demo.dto.request.ProjectApprovalRequest;
 import com.example.demo.dto.response.PageResponse;
 import com.example.demo.dto.response.ProyectoObraResponse;
 import com.example.demo.exception.InvalidStateTransitionException;
@@ -64,10 +65,10 @@ public class ProyectoObraService {
     }
 
     @Transactional
-    public ProyectoObraResponse aprobar(Long id) {
+    public ProyectoObraResponse aprobar(Long id, ProjectApprovalRequest request) {
         ProyectoObra proyecto = buscarOrFallar(id);
         validarTransicion(proyecto, EstadoAprobacion.PENDIENTE_APROBACION, "aprobar");
-        proyecto.aprobar();
+        proyecto.aprobar(request.approvedBudget(), request.approvedDeadlineDays(), request.approvedAt(), request.observations());
         ProyectoObra guardado = repository.save(proyecto);
         eventPublisher.publishProjectApproved(guardado.getId(), guardado.getName());
         return mapper.toResponse(guardado);
