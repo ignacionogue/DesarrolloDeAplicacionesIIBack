@@ -22,7 +22,7 @@ class MigrationTests {
             jdbc.update("INSERT INTO " + quotedSchema + ".orden_trabajo(origin, description, priority) VALUES ('MANUAL', 'Legacy manual', 'ALTA')");
             jdbc.update("INSERT INTO " + quotedSchema + ".orden_trabajo(origin, description, priority) VALUES ('INSPECCION', 'Legacy inspection', 'MEDIA')");
             var upgrade = Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema).load();
-            assertEquals(1, upgrade.migrate().migrationsExecuted);
+            assertEquals(2, upgrade.migrate().migrationsExecuted);
             assertEquals(2L, jdbc.queryForObject("SELECT COUNT(*) FROM " + quotedSchema + ".orden_trabajo WHERE project_id IS NULL", Long.class));
             assertEquals(1L, jdbc.queryForObject("SELECT COUNT(*) FROM " + quotedSchema + ".orden_trabajo WHERE origin='MANUAL' AND description='Legacy manual'", Long.class));
             jdbc.update("INSERT INTO " + quotedSchema + ".proyecto_obra(id,name,estimated_budget,estimated_start_date,estimated_duration_days) VALUES (100,'Project migration',1000,CURRENT_DATE,30)");
@@ -40,7 +40,7 @@ class MigrationTests {
     }
 
     @Test void latestMigrationIsAppliedAndPreservesData() {
-        assertEquals("3", flyway.info().current().getVersion().toString());
+        assertEquals("4", flyway.info().current().getVersion().toString());
         jdbc.update("INSERT INTO material(nombre, unidad) VALUES (?, ?)", "Migration preservation fixture", "kg");
         var count = jdbc.queryForObject("SELECT COUNT(*) FROM material", Long.class);
         flyway.validate();

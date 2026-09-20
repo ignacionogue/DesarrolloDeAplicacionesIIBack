@@ -98,3 +98,17 @@ Ese esquema se elimina al finalizar la prueba; nunca ejecutar contra una DB comp
 Revertir a una imagen anterior **no es compatible después de crear órdenes con
 origin PROYECTO**, porque su enum Java no lo conoce. Coordinar una corrección hacia
 adelante o recuperación con DevOps; no eliminar esas órdenes para forzar rollback.
+
+## V4: cuentas de aplicación
+
+V4 crea `app_user`: ID, username canónico único, password_hash BCrypt, role,
+enabled y token_version. No inserta usuarios ni contraseñas en SQL ni modifica
+tablas de negocio/versiones previas. Las cuentas iniciales se crean mediante la
+aplicación desde configuración secreta, después de Flyway.
+
+La versión de tokens se incrementa atómicamente al hacer logout; el filtro valida
+identidad, rol, habilitación y versión contra PostgreSQL en cada solicitud.
+No hay caché local de revocación: funciona entre réplicas. Al desplegar, los JWT
+de la versión anterior se rechazan y hay que iniciar sesión nuevamente.
+Revertir a una imagen con el login viejo restauraría sus limitaciones y no
+reconocería las cuentas nuevas; coordinar esa decisión con DevOps.

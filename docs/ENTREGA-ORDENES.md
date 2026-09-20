@@ -33,11 +33,10 @@ JWT_SECRET, AUTH_USERNAME, AUTH_PASSWORD, AUTH_ROLE y JWT_EXPIRATION_MINUTES.
 Ahora AUTH_ROLE debe ser uno de los roles documentados y la duración JWT positiva.
 CORS_ALLOWED_ORIGINS sigue controlando dominios autorizados.
 
-**Punto pendiente de coordinación:** el login actual tiene una única cuenta y rol
-por instancia. La autorización está implementada, pero eso no provee usuarios de
-distintos roles para una demo completa. Hace falta acordar gestión multiusuario o
-la integración de identidad. No habilitar privilegios extra a PERSONAL_OBRAS para
-sortearlo, ni publicar JWT_SECRET para generar tokens desde el cliente.
+**Actualización posterior al respaldo dd89e98:** se implementó login multiusuario
+en un cambio separado con V4. Ver [USUARIOS.md](USUARIOS.md) para el contrato,
+aprovisionamiento y el nuevo secreto opcional AUTH_BOOTSTRAP_USERS.
+Los resultados de esta sección corresponden al respaldo anterior a ese cambio.
 
 No se tocaron frontend, Azure, Dockerfile, Terraform, workflows, permisos ni secretos.
 DevOps conserva la decisión de despliegue y configuración del proxy `/api`.

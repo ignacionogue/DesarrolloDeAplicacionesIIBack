@@ -17,8 +17,9 @@ Usar [.env.example](.env.example) como referencia, nunca subir `.env` real.
 Spring Boot **no carga `.env` automáticamente**: definir variables de entorno
 en la terminal o IDE. En Docker se puede usar `--env-file .env`.
 
-Obligatorias: `DB_URL` (JDBC), `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`,
-`AUTH_USERNAME` y `AUTH_PASSWORD`.
+Obligatorias: `DB_URL` (JDBC), `DB_USERNAME`, `DB_PASSWORD` y `JWT_SECRET`.
+Las cuentas se almacenan en PostgreSQL con contraseñas BCrypt. El secreto opcional
+`AUTH_BOOTSTRAP_USERS` permite crearlas inicialmente; ver [usuarios](docs/USUARIOS.md).
 Ejemplo no sensible de URL: `jdbc:postgresql://localhost:5432/obras_publicas`.
 La contraseña debe proporcionarla el desarrollador local o DevOps en Azure.
 La aplicación no incluye credenciales ni valores alternativos de conexión.
@@ -44,13 +45,15 @@ En Windows usar `mvnw.cmd`. Si el wrapper falla al inspeccionar `.m2` en Windows
 se puede ejecutar un Maven 3.9.16 ya instalado con los mismos argumentos; no es
 necesario editar el wrapper mantenido por DevOps.
 
-Con las variables definidas y una base vacía, el arranque aplica Flyway V1–V3 y
+Con las variables definidas y una base vacía, el arranque aplica Flyway V1–V4 y
 Hibernate valida el esquema. Para bases preexistentes leer
 [docs/MIGRACIONES.md](docs/MIGRACIONES.md) **antes** de arrancar esta versión.
 
 - Puerto por defecto: 8080.
 - `GET /api/health`: consulta PostgreSQL; 200 con `database: up`, o 503 si falla.
-- `POST /api/auth/login`: recibe `username` y `password`; entrega un JWT con el rol configurado.
+- `POST /api/auth/login`: recibe `username` y `password`; entrega un JWT con el rol de la cuenta.
+- `GET /api/auth/me`: devuelve usuario y rol de la sesión actual.
+- `POST /api/auth/logout`: invalida todas las sesiones actuales de esa cuenta; responde 204.
 - `GET /actuator/health`: health/probes de infraestructura existentes.
 - `GET /swagger-ui/index.html`: documentación interactiva.
 - `GET /v3/api-docs`: OpenAPI generado desde la versión ejecutada.
@@ -97,10 +100,11 @@ INSPECTOR_OBRA. VerifyOnly requiere PERSONAL_OBRAS; delivery requiere
 PERSONAL_OBRAS y JEFE_CUADRILLA. Ambos aceptan `-BaseUrl` y fallan antes de escribir
 si faltan tokens. No guardarlos en archivos versionados ni enviarlos en capturas.
 
-El login actual admite una sola cuenta/rol por instancia. No alcanza para emitir
-todos los tokens de una demo multiusuario; esa provisión está pendiente de acuerdo
-con el equipo. Las pruebas automatizadas verifican la matriz completa sin agregar
-usuarios ni mecanismos de acceso a producción. Ver [permisos y contratos](FRONTEND-CONTRACT.md)
+El login admite varias cuentas con roles distintos en una misma instancia.
+AUTH_USERNAME/AUTH_PASSWORD/AUTH_ROLE se conservan como alta inicial opcional de
+la antigua cuenta; luego el login consulta la base. No sobrescriben cuentas existentes.
+Las pruebas verifican la matriz completa sin agregar usuarios a producción.
+Ver [permisos y contratos](FRONTEND-CONTRACT.md)
 y [explicación de Strategy para la defensa](docs/ORDENES-STRATEGY.md).
 
 ## Docker local

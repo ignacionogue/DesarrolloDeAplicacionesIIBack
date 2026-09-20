@@ -31,24 +31,19 @@ public class JwtService {
         if (properties.jwtSecret() == null || properties.jwtSecret().getBytes(StandardCharsets.UTF_8).length < 32) {
             throw new IllegalStateException("JWT_SECRET debe tener al menos 32 caracteres.");
         }
-        if (isBlank(properties.username()) || isBlank(properties.password()) || isBlank(properties.role())) {
-            throw new IllegalStateException("AUTH_USERNAME, AUTH_PASSWORD y AUTH_ROLE son obligatorios.");
-        }
-        if (!ROLES.contains(properties.role()) || properties.jwtExpirationMinutes() <= 0) {
-            throw new IllegalStateException("AUTH_ROLE debe ser un rol conocido y JWT_EXPIRATION_MINUTES debe ser positivo.");
+        if (properties.jwtExpirationMinutes() <= 0) {
+            throw new IllegalStateException("JWT_EXPIRATION_MINUTES debe ser positivo.");
         }
         signingKey = Keys.hmacShaKeyFor(properties.jwtSecret().getBytes(StandardCharsets.UTF_8));
     }
 
-    private boolean isBlank(String value) {
-        return value == null || value.isBlank();
-    }
-
-    public String issueToken(String username, String role) {
+    public String issueToken(com.example.demo.model.AppUser user) {
         Instant now = Instant.now();
         return Jwts.builder()
-                .subject(username)
-                .claim("role", role)
+                .subject(user.getUsername())
+                .claim("uid", user.getId())
+                .claim("role", user.getRole())
+                .claim("ver", user.getTokenVersion())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plus(properties.jwtExpirationMinutes(), ChronoUnit.MINUTES)))
                 .signWith(signingKey)

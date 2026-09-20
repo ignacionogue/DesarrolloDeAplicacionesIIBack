@@ -33,6 +33,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/auth/login", "/api/health", "/actuator/health").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/public-works/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/public-works/projects", "/api/public-works/work-orders",
                                 "/api/public-works/crews", "/api/public-works/street-closures").hasRole("PERSONAL_OBRAS")

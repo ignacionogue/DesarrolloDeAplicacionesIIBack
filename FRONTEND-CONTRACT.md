@@ -1,6 +1,6 @@
 # Contrato para primera entrega
 
-Actualización de entrega: el esquema se administra con Flyway V1–V3 y Hibernate
+Actualización de entrega: el esquema se administra con Flyway V1–V4 y Hibernate
 solo valida. Leer README.md y docs/MIGRACIONES.md antes de ejecutar sobre una base
 preexistente. La entrega se revisa mediante feature/* → develop; no implica deploy.
 
@@ -21,6 +21,8 @@ Ningun archivo del front fue modificado.
 | GET | /v3/api-docs | 200, OpenAPI |
 | GET | /swagger-ui/index.html | 200, Swagger UI |
 | POST | /api/auth/login | 200, JWT, usuario y rol |
+| GET | /api/auth/me | 200, usuario y rol actuales; requiere JWT |
+| POST | /api/auth/logout | 204; revoca todas las sesiones de la cuenta; requiere JWT |
 | GET | /api/public-works/projects | 200, pagina de proyectos |
 | GET | /api/public-works/projects/{id} | 200, proyecto |
 | POST | /api/public-works/projects | 201, proyecto creado |
@@ -45,8 +47,8 @@ Ningun archivo del front fue modificado.
 
 Los endpoints bajo `/api/public-works/**` requieren `Authorization: Bearer <JWT>`.
 Obtenerlo con `POST /api/auth/login` enviando `{"username":"...","password":"..."}`.
-El token incluye el rol configurado en `AUTH_ROLE`; credenciales y `JWT_SECRET`
-son variables inyectadas por el entorno y no se versionan. `/api/health` sigue
+El token incluye el rol almacenado para la cuenta en PostgreSQL; las credenciales
+iniciales y `JWT_SECRET` se inyectan por el entorno y no se versionan. `/api/health` sigue
 siendo público para infraestructura.
 
 ### Permisos aplicados
@@ -66,12 +68,20 @@ Login responde `{"accessToken":"...","username":"...","role":"..."}`.
 Sin token válido: 401; con un rol sin permiso: 403. Swagger permite ingresar el
 Bearer JWT y documenta la seguridad en las operaciones del módulo.
 
-**Limitación del login existente:** una sola cuenta y un solo rol por instancia,
-configurados con AUTH_USERNAME/AUTH_PASSWORD/AUTH_ROLE. No existe todavía una
-gestión multiusuario. La demo completa con varios actores requiere resolver esa
-provisión con el equipo; no se permite enviar un rol en el login para elevar permisos.
-No hay endpoints `/api/auth/me` ni `/api/auth/logout`; el token vence y el cliente
-puede descartarlo, pero no hay revocación anticipada implementada.
+El login admite varias cuentas por instancia. Cada una tiene un rol; enviar `role`
+en el login no cambia los permisos. Los nombres se normalizan a minúsculas y sin
+espacios en los extremos; la contraseña distingue mayúsculas. Las contraseñas
+se guardan como hash BCrypt y no salen en respuestas.
+
+`GET /api/auth/me` responde `{"username":"personal.obras","role":"PERSONAL_OBRAS"}`.
+`POST /api/auth/logout` no lleva body y responde 204: invalida todos los JWT actuales
+de esa cuenta, incluso en otras instancias. Al actualizar a V4 deben iniciar sesión
+otra vez: los tokens previos no contienen la referencia de cuenta y versión necesarias.
+Una cuenta deshabilitada, eliminada o con rol cambiado no puede usar un token viejo.
+
+No hay registro público ni endpoints para administrar cuentas o elegir roles.
+Las altas iniciales usan `AUTH_BOOTSTRAP_USERS`; ver [docs/USUARIOS.md](docs/USUARIOS.md).
+Cambiar esa variable no sobrescribe cuentas existentes ni rota contraseñas.
 
 ## Paginacion y filtros
 
@@ -277,7 +287,7 @@ Configurar la URL real del front desplegado ademas de las locales. No puede
 confirmarse CORS remoto hasta conocer y probar el dominio. Swagger esta fuera de /api.
 
 Infra debe configurar DB_URL, DB_USERNAME y DB_PASSWORD. El puerto es PORT o
-SERVER_PORT (8080). PostgreSQL es persistente; Flyway V1–V3 administra el esquema y
+SERVER_PORT (8080). PostgreSQL es persistente; Flyway V1–V4 administra el esquema y
 ddl-auto=validate comprueba las entidades. No usar credenciales locales en Azure.
 
 Integracion con develop: se conservan Docker, CI, Actuator y el health check de
@@ -289,8 +299,9 @@ APP_DEMO_ENABLED=true carga materiales/maquinaria solo si sus catalogos estan va
 verify-demo.ps1 carga otra tanda de 4 proyectos/8 ordenes; -VerifyOnly no los crea.
 Ambos scripts requieren `-Tokens` con JWT válidos por rol; consultar README.
 verify-delivery.ps1 agrega cortes demo idempotentes y verifica lo nuevo.
-Los datos demo no son datos municipales reales. No hay usuarios de prueba.
+Los datos demo no son datos municipales reales. Las cuentas de prueba se generan
+con scripts/New-DemoUsers.ps1 y se cargan explícitamente; sus contraseñas no están en Git.
 
 Se pueden conectar los endpoints de la tabla con este contrato y el OpenAPI
-exportado. Gestión multiusuario, integraciones externas, actividad de proyectos y evidencias
+exportado. Administración de cuentas, integraciones externas, actividad de proyectos y evidencias
 quedan pendientes; no se promete inmutabilidad de futuras ampliaciones.

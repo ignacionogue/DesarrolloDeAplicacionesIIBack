@@ -486,6 +486,25 @@
         ]
       }
     },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "auth-controller"
+        ],
+        "summary": "Cerrar todas las sesiones de la cuenta actual",
+        "operationId": "logout",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/auth/login": {
       "post": {
         "tags": [
@@ -923,6 +942,31 @@
           }
         }
       }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "auth-controller"
+        ],
+        "operationId": "me",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrentUserResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1273,11 +1317,13 @@
         "properties": {
           "username": {
             "type": "string",
-            "minLength": 1
+            "maxLength": 100,
+            "minLength": 0
           },
           "password": {
             "type": "string",
-            "minLength": 1
+            "maxLength": 72,
+            "minLength": 0
           }
         },
         "required": [
@@ -1588,6 +1634,17 @@
             "items": {
               "$ref": "#/components/schemas/CrewLoad"
             }
+          }
+        }
+      },
+      "CurrentUserResponse": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
           }
         }
       }

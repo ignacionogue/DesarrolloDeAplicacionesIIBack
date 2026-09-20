@@ -20,7 +20,7 @@ class DeliveryApiTests {
     @Autowired CuadrillaRepository crews;
     @Autowired StreetClosureRepository closures;
     @Autowired DashboardService dashboard;
-    @Autowired com.example.demo.security.JwtService jwt;
+    @Autowired TestUsers jwt;
 
     private HttpResponse<String> call(String method, String path, String body) throws Exception {
         String token = jwt.issueToken("delivery.fixture", method.equals("PATCH") ? "JEFE_CUADRILLA" : "PERSONAL_OBRAS");

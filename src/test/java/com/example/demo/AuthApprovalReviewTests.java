@@ -19,10 +19,10 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /** Regression coverage for authentication and the project approval contract. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
-        "app.auth.role=PERSONAL_OBRAS"})
+        "app.auth.role=PERSONAL_OBRAS", "app.auth.username=review.user"})
 class AuthApprovalReviewTests {
     @LocalServerPort int port;
-    @Autowired JwtService jwt;
+    @Autowired TestUsers jwt;
     @Autowired ProyectoObraRepository projects;
     @Autowired tools.jackson.databind.ObjectMapper json;
     private HttpResponse<String> call(String method, String path, String body, String token) throws Exception {
@@ -76,7 +76,7 @@ class AuthApprovalReviewTests {
         assertTrue(r.body().contains("\"code\""), "401 must include consistent API error body");
     }
     @Test void nonApproverRoleCannotApprove() throws Exception {
-        var login = call("POST", "/api/auth/login", "{\"username\":\"test.user\",\"password\":\"test-password\"}", null);
+        var login = call("POST", "/api/auth/login", "{\"username\":\"review.user\",\"password\":\"test-password\"}", null);
         assertEquals(200, login.statusCode());
         String token = login.body().replaceFirst(".*\\\"accessToken\\\":\\\"([^\\\"]+)\\\".*", "$1");
         assertEquals(403, call("PATCH", "/api/public-works/projects/" + pending() + "/approve", approval(""), token).statusCode());

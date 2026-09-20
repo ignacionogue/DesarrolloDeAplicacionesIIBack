@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class WorkOrderFlowTests {
     private static final String BASE = "/api/public-works/work-orders";
     @LocalServerPort int port;
-    @Autowired JwtService jwt;
+    @Autowired TestUsers jwt;
     @Autowired ObjectMapper json;
     @Autowired OrdenTrabajoRepository orders;
     @Autowired ProyectoObraRepository projects;

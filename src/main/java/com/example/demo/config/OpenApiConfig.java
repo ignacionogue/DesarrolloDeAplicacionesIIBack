@@ -24,7 +24,7 @@ public class OpenApiConfig {
     @Bean
     OpenApiCustomizer protectedOperations() {
         return api -> api.getPaths().forEach((path, item) -> {
-            if (path.startsWith("/api/public-works/")) {
+            if (path.startsWith("/api/public-works/") || path.equals("/api/auth/me") || path.equals("/api/auth/logout")) {
                 item.readOperations().forEach(operation -> operation.addSecurityItem(new SecurityRequirement().addList("bearerAuth")));
             }
         });
