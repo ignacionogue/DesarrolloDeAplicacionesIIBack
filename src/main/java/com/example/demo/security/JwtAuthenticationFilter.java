@@ -19,9 +19,11 @@ import java.util.List;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final com.example.demo.repository.AppUserRepository users;
 
-    public JwtAuthenticationFilter(JwtService jwtService) {
+    public JwtAuthenticationFilter(JwtService jwtService, com.example.demo.repository.AppUserRepository users) {
         this.jwtService = jwtService;
+        this.users = users;
     }
 
     @Override
@@ -32,10 +34,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             try {
                 Claims claims = jwtService.parse(authorization.substring(7));
                 String role = claims.get("role", String.class);
-                if (claims.getSubject() != null && role != null) {
-                    var authentication = new UsernamePasswordAuthenticationToken(
-                            claims.getSubject(), null, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                var version = claims.get("ver", Long.class);
+                var userId = claims.get("uid", Long.class);
+                if (claims.getSubject() != null && !claims.getSubject().isBlank()
+                        && role != null && JwtService.ROLES.contains(role) && claims.getExpiration() != null
+                        && version != null && userId != null) {
+                    users.findByUsername(claims.getSubject())
+                            .filter(user -> user.isEnabled() && user.getId().equals(userId)
+                                    && user.getRole().equals(role) && user.getTokenVersion() == version)
+                            .ifPresent(user -> {
+                                var authentication = new UsernamePasswordAuthenticationToken(
+                                        user.getUsername(), null, List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole())));
+                                SecurityContextHolder.getContext().setAuthentication(authentication);
+                            });
                 }
             } catch (JwtException | IllegalArgumentException exception) {
                 SecurityContextHolder.clearContext();

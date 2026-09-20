@@ -1,9 +1,13 @@
+param([string]$BaseUrl = 'http://localhost:8080', [hashtable]$Tokens = @{})
 $ErrorActionPreference = 'Stop'
-$base = 'http://localhost:8080/api/public-works'
+$base = $BaseUrl.TrimEnd('/') + '/api/public-works'
+. "$PSScriptRoot/scripts/ApiAuth.ps1"
+Assert-ApiTokens $Tokens @('PERSONAL_OBRAS','JEFE_CUADRILLA')
 $checks = [System.Collections.Generic.List[object]]::new()
 function Check($name, $ok) { $checks.Add(@{test=$name;passed=[bool]$ok}); if (-not $ok) { throw "FAIL: $name" } }
 function Request($method, $path, $body, $status) {
     $args = @{Uri="$base$path";Method=$method;SkipHttpErrorCheck=$true;TimeoutSec=20}
+    $args.Headers = @{Authorization = 'Bearer ' + (Get-ApiToken $Tokens $method $path)}
     if ($null -ne $body) { $args.ContentType='application/json'; $args.Body=ConvertTo-Json -InputObject $body -Depth 8 -Compress }
     $r=Invoke-WebRequest @args
     Check "$method $path -> $status" ($r.StatusCode -eq $status)
@@ -15,7 +19,7 @@ $summary = Request GET '/dashboard/summary' $null 200
 Check 'Total proyectos real' ($summary.totalProjects -eq $projects.totalElements)
 $open = @($orders.content | Where-Object { $_.status -notin @('COMPLETADA','VALIDADA') })
 Check 'Ordenes abiertas reales' ($summary.openWorkOrders -eq $open.Count)
-Check 'Ordenes externas reales' ($summary.externalWorkOrders -eq @($orders.content | Where-Object origin -ne 'MANUAL').Count)
+Check 'Ordenes externas reales' ($summary.externalWorkOrders -eq @($orders.content | Where-Object origin -in @('ATENCION_CIUDADANA','INSPECCION')).Count)
 Check 'Presupuesto estimado real' ($summary.estimatedBudget -eq ($projects.content | Measure-Object estimatedBudget -Sum).Sum)
 Check 'Presupuesto aprobado real' ($summary.approvedBudget -eq ($projects.content | Measure-Object approvedBudget -Sum).Sum)
 Check 'Avance fisico real' ($summary.averagePhysicalProgress -eq [math]::Round(($projects.content | Measure-Object physicalProgress -Average).Average,0,[MidpointRounding]::AwayFromZero))
@@ -48,10 +52,11 @@ if ($assigned) {
     $restored = Request PATCH "/work-orders/$($assigned.id)/schedule" @{scheduledDate=$assigned.scheduledDate} 200
     Check 'Reprogramar asignada' ($restored.scheduledDate -eq $assigned.scheduledDate)
 }
-$api = Invoke-WebRequest 'http://localhost:8080/v3/api-docs'
+$api = Invoke-WebRequest ($BaseUrl.TrimEnd('/') + '/v3/api-docs')
 $spec=$api.Content | ConvertFrom-Json
 Check 'OpenAPI contiene endpoints nuevos' ($null -ne $spec.paths.'/api/public-works/street-closures'.post -and $null -ne $spec.paths.'/api/public-works/dashboard/summary'.get)
-$api.Content | Set-Content -Encoding utf8 "$PSScriptRoot/openapi.json"
+$spec.servers = @(@{url='/'})
+$spec | ConvertTo-Json -Depth 100 | Set-Content -Encoding utf8 "$PSScriptRoot/openapi.json"
 $summary | ConvertTo-Json -Depth 10 | Set-Content -Encoding utf8 "$PSScriptRoot/dashboard-example.json"
 $checks | ConvertTo-Json -Depth 10 | Set-Content -Encoding utf8 "$PSScriptRoot/delivery-results.json"
 Write-Host "RESULT: $($checks.Count) checks, 0 failures"

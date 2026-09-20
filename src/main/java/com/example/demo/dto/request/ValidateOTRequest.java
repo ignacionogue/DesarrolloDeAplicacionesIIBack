@@ -7,6 +7,7 @@ public class ValidateOTRequest {
     @NotNull(message = "Debe indicarse si la OT fue aprobada o no")
     private Boolean approved;
 
+    @jakarta.validation.constraints.Size(max = 1000)
     private String observations;
 
     public Boolean getApproved() {

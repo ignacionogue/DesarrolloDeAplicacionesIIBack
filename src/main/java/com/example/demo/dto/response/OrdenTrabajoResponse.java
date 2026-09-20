@@ -15,6 +15,7 @@ public record OrdenTrabajoResponse(
         LocalDate scheduledDate,
         Integer estimatedDurationHours,
         boolean hasEvidence,
-        String outcome
+        String outcome,
+        Long projectId
 ) {
 }

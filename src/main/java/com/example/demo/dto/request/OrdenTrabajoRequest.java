@@ -1,21 +1,35 @@
 package com.example.demo.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Positive;
 
 public class OrdenTrabajoRequest {
 
+    @Positive
+    @Schema(description = "Obligatorio para origin PROYECTO; debe omitirse para los demas origenes")
+    private Long projectId;
+
+    public Long getProjectId() { return projectId; }
+
+    public void setProjectId(Long projectId) { this.projectId = projectId; }
+
+    @Size(max = 100)
     private String sourceRequestId;
 
     @NotBlank(message = "El origen es obligatorio")
+    @Schema(allowableValues = {"MANUAL", "PROYECTO", "ATENCION_CIUDADANA", "INSPECCION"})
     private String origin;
 
     @NotBlank(message = "La descripcion es obligatoria")
+    @Size(max = 1000)
     private String description;
 
+    @Size(max = 100)
     private String interventionType;
 
+    @Size(max = 300)
     private String location;
 
     @NotBlank(message = "La prioridad es obligatoria")

@@ -8,5 +8,8 @@ public record AuthProperties(
         long jwtExpirationMinutes,
         String username,
         String password,
-        String role) {
+        String role,
+        String bootstrapUsers) {
+
+    @Override public String toString() { return "AuthProperties[redacted]"; }
 }

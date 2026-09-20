@@ -1,5 +1,9 @@
 # Entrega del backend para revisión de DevOps
 
+**Entrega actual: órdenes, Strategy y permisos (20/09/2026):** ver
+[ENTREGA-ORDENES.md](ENTREGA-ORDENES.md). Lo que sigue es el registro histórico
+de la entrega inicial del 07/09; sus resultados y rama corresponden a esa versión.
+
 Repositorio: ignacionogue/DesarrolloDeAplicacionesIIBack.
 Rama: feature/backend-migraciones-entrega, creada desde develop (662ad1e).
 El backend anterior se recuperó sin modificar main, master ni develop.
