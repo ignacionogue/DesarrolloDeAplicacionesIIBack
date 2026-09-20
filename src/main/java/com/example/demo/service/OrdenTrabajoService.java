@@ -9,6 +9,7 @@ import com.example.demo.dto.response.PageResponse;
 import com.example.demo.exception.InvalidStateTransitionException;
 import com.example.demo.exception.NotFoundException;
 import com.example.demo.mapper.OrdenTrabajoMapper;
+import com.example.demo.strategy.WorkOrderCreationStrategyResolver;
 import com.example.demo.model.Cuadrilla;
 import com.example.demo.model.EstadoOT;
 import com.example.demo.model.Observacion;
@@ -36,15 +37,18 @@ public class OrdenTrabajoService {
     private final CuadrillaRepository cuadrillaRepository;
     private final EvidenciaRepository evidenciaRepository;
     private final ObservacionRepository observacionRepository;
+    private final WorkOrderCreationStrategyResolver creationStrategies;
 
     public OrdenTrabajoService(OrdenTrabajoRepository repository, OrdenTrabajoMapper mapper,
                                 CuadrillaRepository cuadrillaRepository, EvidenciaRepository evidenciaRepository,
-                                ObservacionRepository observacionRepository) {
+                                ObservacionRepository observacionRepository,
+                                WorkOrderCreationStrategyResolver creationStrategies) {
         this.repository = repository;
         this.mapper = mapper;
         this.cuadrillaRepository = cuadrillaRepository;
         this.evidenciaRepository = evidenciaRepository;
         this.observacionRepository = observacionRepository;
+        this.creationStrategies = creationStrategies;
     }
 
     @Transactional(readOnly = true)
@@ -70,7 +74,7 @@ public class OrdenTrabajoService {
     @Transactional
     public OrdenTrabajoResponse crear(OrdenTrabajoRequest request) {
         Cuadrilla cuadrilla = resolverCuadrilla(request.getCrew());
-        OrdenTrabajo ot = mapper.toEntity(request, cuadrilla);
+        OrdenTrabajo ot = creationStrategies.resolve(request.getOrigin()).create(request, cuadrilla);
         OrdenTrabajo guardada = repository.save(ot);
         // Recien creada: no puede tener evidencia todavia.
         return mapper.toResponse(guardada, false);
@@ -80,7 +84,9 @@ public class OrdenTrabajoService {
     public OrdenTrabajoResponse actualizar(Long id, OrdenTrabajoRequest request) {
         OrdenTrabajo ot = buscarOrFallar(id);
         Cuadrilla cuadrilla = resolverCuadrilla(request.getCrew());
-        mapper.updateEntity(ot, request, cuadrilla);
+        // Revalidate origin/project on PUT without replacing identity or workflow state.
+        var proposed = creationStrategies.resolve(request.getOrigin()).create(request, cuadrilla);
+        mapper.updateEntity(ot, proposed);
         OrdenTrabajo guardada = repository.save(ot);
         return mapper.toResponse(guardada, evidenciaRepository.existsByOrdenTrabajoId(id));
     }

@@ -25,17 +25,18 @@ public class OrdenTrabajoMapper {
         );
     }
 
-    public void updateEntity(OrdenTrabajo ot, OrdenTrabajoRequest request, Cuadrilla cuadrilla) {
+    public void updateEntity(OrdenTrabajo ot, OrdenTrabajo proposed) {
         ot.updateDatosGenerales(
-                request.getSourceRequestId(),
-                parseOrigin(request.getOrigin()),
-                request.getDescription(),
-                request.getInterventionType(),
-                request.getLocation(),
-                parsePriority(request.getPriority()),
-                request.getEstimatedDurationHours(),
-                cuadrilla
+                proposed.getSourceRequestId(),
+                proposed.getOrigin(),
+                proposed.getDescription(),
+                proposed.getInterventionType(),
+                proposed.getLocation(),
+                proposed.getPriority(),
+                proposed.getEstimatedDurationHours(),
+                proposed.getCuadrilla()
         );
+        ot.setProject(proposed.getProject());
     }
 
     public OrdenTrabajoResponse toResponse(OrdenTrabajo ot, boolean hasEvidence) {
@@ -52,13 +53,14 @@ public class OrdenTrabajoMapper {
                 ot.getScheduledDate(),
                 ot.getEstimatedDurationHours(),
                 hasEvidence,
-                ot.getOutcome()
+                ot.getOutcome(),
+                ot.getProject() == null ? null : ot.getProject().getId()
         );
     }
 
     private OrigenOT parseOrigin(String value) {
         try {
-            return OrigenOT.valueOf(value.trim().toUpperCase());
+            return OrigenOT.valueOf(value.trim().toUpperCase(java.util.Locale.ROOT));
         } catch (IllegalArgumentException ex) {
             throw new InvalidRequestException("origin invalido: " + value);
         }
@@ -66,7 +68,7 @@ public class OrdenTrabajoMapper {
 
     private PrioridadOT parsePriority(String value) {
         try {
-            return PrioridadOT.valueOf(value.trim().toUpperCase());
+            return PrioridadOT.valueOf(value.trim().toUpperCase(java.util.Locale.ROOT));
         } catch (IllegalArgumentException ex) {
             throw new InvalidRequestException("priority invalido: " + value);
         }

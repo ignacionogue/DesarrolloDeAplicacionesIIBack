@@ -1,9 +1,15 @@
-param([switch]$VerifyOnly)
+param([switch]$VerifyOnly, [string]$BaseUrl = 'http://localhost:8080', [hashtable]$Tokens = @{})
 $ErrorActionPreference = 'Stop'
-$base = 'http://localhost:8080'
+$base = $BaseUrl.TrimEnd('/')
+. "$PSScriptRoot/scripts/ApiAuth.ps1"
+$requiredRoles = if ($VerifyOnly) { @('PERSONAL_OBRAS') } else {
+    @('PERSONAL_OBRAS','RESPONSABLE_AUTORIZADO','JEFE_CUADRILLA','OPERARIO_CONTRATISTA','INSPECTOR_OBRA')
+}
+Assert-ApiTokens $Tokens $requiredRoles
 $results = [System.Collections.Generic.List[object]]::new()
 function Api($method, $path, $body = $null, $expected = 200) {
     $args = @{ Uri = "$base$path"; Method = $method; SkipHttpErrorCheck = $true; TimeoutSec = 20 }
+    if ($path.StartsWith('/api/public-works/')) { $args.Headers = @{Authorization = 'Bearer ' + (Get-ApiToken $Tokens $method $path)} }
     if ($null -ne $body) { $args.ContentType = 'application/json'; $args.Body = if ($body -is [string]) { $body } else { ConvertTo-Json -InputObject $body -Depth 10 -Compress } }
     $r = Invoke-WebRequest @args
     $data = try { $r.Content | ConvertFrom-Json } catch { $null }
@@ -29,12 +35,13 @@ if (-not $VerifyOnly) {
         $body.description += ' - revisado'
         $null = Api PUT "$prefix/projects/$($p.id)" $body
     }
-    $null = Api PATCH "$prefix/projects/$($projects[0])/approve" $null 409
+    $approvalBody = @{approvedBudget=800000;approvedDeadlineDays=28;approvedAt='2026-09-22';observations='Aprobacion demo'}
+    $null = Api PATCH "$prefix/projects/$($projects[0])/approve" $approvalBody 409
     foreach ($id in $projects[1..3]) { $null = Api PATCH "$prefix/projects/$id/submit-approval" }
-    $approved = Api PATCH "$prefix/projects/$($projects[2])/approve"
-    Check 'Aprobado expone SIN_INICIAR (contrato actual)' ($approved.status -eq 'SIN_INICIAR')
+    $approved = Api PATCH "$prefix/projects/$($projects[2])/approve" $approvalBody
+    Check 'Aprobado expone APROBADO y fecha' ($approved.status -eq 'APROBADO' -and $approved.approvedAt -eq '2026-09-22')
     $null = Api PATCH "$prefix/projects/$($projects[3])/reject"
-    $null = Api PATCH "$prefix/projects/$($projects[2])/approve" $null 409
+    $null = Api PATCH "$prefix/projects/$($projects[2])/approve" $approvalBody 409
     $states = @('PENDIENTE','PROGRAMADA','ASIGNADA','EN_EJECUCION','PAUSADA','COMPLETADA','VALIDADA','REABIERTA')
     $orders = @()
     for ($i=0; $i -lt $states.Count; $i++) {

@@ -23,7 +23,7 @@ java -jar target/demo-0.0.1-SNAPSHOT.jar
 ```
 
 Requiere `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`. Flyway valida checksums, aplica
-V1 solo si falta y Hibernate usa `ddl-auto=validate`: **no crea ni ajusta tablas**.
+las versiones pendientes y Hibernate usa `ddl-auto=validate`: **no crea ni ajusta tablas**.
 En PostgreSQL el SQL de V1 es transaccional. No hay scripts manuales contra Azure.
 
 **DevOps debe aprobar este mecanismo antes del despliegue.** La identidad que
@@ -51,7 +51,7 @@ cambios. La prueba de V1 se realiza en otra base temporal y vacía.
 
 ## Versiones siguientes y reversión
 
-Después de aplicar V1, no editarla: crear `V2__descripcion.sql`, etc. Probar cada
+Después de aplicar una versión, no editarla: crear una nueva migración. Probar cada
 versión sobre PostgreSQL y documentar compatibilidad con la imagen anterior.
 Una segunda ejecución de la misma versión debe validar y no repetir DDL.
 
@@ -69,3 +69,46 @@ claves foráneas, columnas obligatorias y que `migrate()` por segunda vez aplica
 0 migraciones y conserva los registros existentes.
 No convertir la base de prueba en base compartida. La versión PostgreSQL usada
 y resultados de la ejecución se registran en `docs/DEVOPS-HANDOFF.md`.
+
+## V2 y V3: aprobación y órdenes vinculadas
+
+V2 agrega approved_at y approval_observations a proyecto_obra. Se conserva sin
+modificaciones, igual que V1.
+
+V3 (`src/main/java/db/migration/V3__link_work_orders_to_projects.java`) agrega:
+
+- `orden_trabajo.project_id` nullable, FK hacia proyecto_obra y un índice.
+- PROYECTO a los orígenes admitidos.
+- Un CHECK que exige proyecto para PROYECTO y lo excluye para los demás orígenes.
+
+Las órdenes anteriores conservan todos sus datos y quedan con project_id NULL.
+La FK impide eliminar un proyecto que tenga órdenes vinculadas.
+
+Es una migración Java Flyway porque V1 no dio nombre explícito al CHECK de origen:
+PostgreSQL y H2 le asignan nombres diferentes. V3 localiza únicamente el CHECK
+de los valores del enum, conserva NOT NULL, y ejecuta DDL dentro de la transacción
+de Flyway en PostgreSQL. Está empaquetada en el JAR, en la ubicación db/migration.
+Como las migraciones Java de Flyway no tienen checksum automático, su código
+tampoco debe alterarse después de desplegarse; las correcciones serán V4 o superior.
+
+La suite crea un esquema temporal, aplica V1/V2, inserta órdenes antiguas, aplica
+V3 y verifica conservación, FK, reglas de origen y segunda ejecución sin DDL.
+Ese esquema se elimina al finalizar la prueba; nunca ejecutar contra una DB compartida.
+
+Revertir a una imagen anterior **no es compatible después de crear órdenes con
+origin PROYECTO**, porque su enum Java no lo conoce. Coordinar una corrección hacia
+adelante o recuperación con DevOps; no eliminar esas órdenes para forzar rollback.
+
+## V4: cuentas de aplicación
+
+V4 crea `app_user`: ID, username canónico único, password_hash BCrypt, role,
+enabled y token_version. No inserta usuarios ni contraseñas en SQL ni modifica
+tablas de negocio/versiones previas. Las cuentas iniciales se crean mediante la
+aplicación desde configuración secreta, después de Flyway.
+
+La versión de tokens se incrementa atómicamente al hacer logout; el filtro valida
+identidad, rol, habilitación y versión contra PostgreSQL en cada solicitud.
+No hay caché local de revocación: funciona entre réplicas. Al desplegar, los JWT
+de la versión anterior se rechazan y hay que iniciar sesión nuevamente.
+Revertir a una imagen con el login viejo restauraría sus limitaciones y no
+reconocería las cuentas nuevas; coordinar esa decisión con DevOps.
