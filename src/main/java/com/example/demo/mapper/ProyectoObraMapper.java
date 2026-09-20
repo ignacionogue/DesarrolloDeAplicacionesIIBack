@@ -3,6 +3,7 @@ package com.example.demo.mapper;
 import com.example.demo.dto.request.ProyectoObraRequest;
 import com.example.demo.dto.response.ProyectoObraResponse;
 import com.example.demo.model.EstadoAprobacion;
+import com.example.demo.model.EstadoActividad;
 import com.example.demo.model.ProyectoObra;
 import org.springframework.stereotype.Component;
 
@@ -37,11 +38,11 @@ public class ProyectoObraMapper {
                 request.getScope(),
                 request.getLocation(),
                 request.getEstimatedBudget(),
-                request.getApprovedBudget(),
+                proyecto.getApprovalStatus() == EstadoAprobacion.APROBADO ? proyecto.getApprovedBudget() : request.getApprovedBudget(),
                 request.getUsedBudget(),
                 request.getEstimatedStartDate(),
                 request.getEstimatedDurationDays(),
-                request.getApprovedDeadlineDays(),
+                proyecto.getApprovalStatus() == EstadoAprobacion.APROBADO ? proyecto.getApprovedDeadlineDays() : request.getApprovedDeadlineDays(),
                 request.getPhysicalProgress(),
                 request.getTechnicalManager(),
                 request.getContractor()
@@ -71,13 +72,14 @@ public class ProyectoObraMapper {
     /**
      * Mientras el proyecto no esta APROBADO, el status visible es el de aprobacion
      * (BORRADOR / PENDIENTE_APROBACION / RECHAZADO). Una vez APROBADO, el status
-     * visible pasa a ser el de ejecucion (activityStatus).
+     * visible es APROBADO hasta iniciar la ejecucion; luego refleja activityStatus.
      */
     private String resolverStatus(ProyectoObra proyecto) {
         if (proyecto.getApprovalStatus() != EstadoAprobacion.APROBADO) {
             return proyecto.getApprovalStatus().name();
         }
         return proyecto.getActivityStatus() != null
+                && proyecto.getActivityStatus() != EstadoActividad.SIN_INICIAR
                 ? proyecto.getActivityStatus().name()
                 : EstadoAprobacion.APROBADO.name();
     }

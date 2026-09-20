@@ -20,9 +20,10 @@ class DeliveryApiTests {
     @Autowired CuadrillaRepository crews;
     @Autowired StreetClosureRepository closures;
     @Autowired DashboardService dashboard;
+    @Autowired com.example.demo.security.JwtService jwt;
 
     private HttpResponse<String> call(String method, String path, String body) throws Exception {
-        String token = login();
+        String token = jwt.issueToken("delivery.fixture", method.equals("PATCH") ? "JEFE_CUADRILLA" : "PERSONAL_OBRAS");
         return HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
                 .header("Content-Type", "application/json")
                 .header("Authorization", "Bearer " + token)

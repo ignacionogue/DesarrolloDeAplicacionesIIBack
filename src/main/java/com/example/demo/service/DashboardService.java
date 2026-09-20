@@ -29,7 +29,8 @@ public class DashboardService {
         var approved = sum(ps, ProyectoObra::getApprovedBudget);
         var used = sum(ps, ProyectoObra::getUsedBudget);
         return new DashboardSummaryResponse(today, ps.size(), ps.stream().filter(this::isActive).count(),
-                open.size(), os.stream().filter(o -> o.getOrigin() != OrigenOT.MANUAL).count(),
+                open.size(), os.stream().filter(o -> o.getOrigin() == OrigenOT.ATENCION_CIUDADANA
+                        || o.getOrigin() == OrigenOT.INSPECCION).count(),
                 open.stream().filter(o -> o.getScheduledDate() != null && o.getScheduledDate().isBefore(today)).count(),
                 ps.stream().filter(this::isActive).filter(p -> p.getEstimatedStartDate().plusDays(
                         p.getApprovedDeadlineDays() != null ? p.getApprovedDeadlineDays() : p.getEstimatedDurationDays()

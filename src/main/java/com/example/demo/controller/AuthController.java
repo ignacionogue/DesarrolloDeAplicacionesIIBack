@@ -5,7 +5,7 @@ import com.example.demo.dto.request.LoginRequest;
 import com.example.demo.dto.response.LoginResponse;
 import com.example.demo.security.JwtService;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
+import com.example.demo.exception.UnauthorizedException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.codec.Utf8;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,7 +32,7 @@ public class AuthController {
         boolean validUser = MessageDigest.isEqual(Utf8.encode(request.username()), Utf8.encode(properties.username()));
         boolean validPassword = MessageDigest.isEqual(Utf8.encode(request.password()), Utf8.encode(properties.password()));
         if (!validUser || !validPassword) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            throw new UnauthorizedException("Credenciales invalidas");
         }
         return ResponseEntity.ok(new LoginResponse(
                 jwtService.issueToken(properties.username(), properties.role()),

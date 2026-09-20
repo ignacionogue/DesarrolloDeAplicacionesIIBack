@@ -44,7 +44,7 @@ En Windows usar `mvnw.cmd`. Si el wrapper falla al inspeccionar `.m2` en Windows
 se puede ejecutar un Maven 3.9.16 ya instalado con los mismos argumentos; no es
 necesario editar el wrapper mantenido por DevOps.
 
-Con las variables definidas y una base vacía, el arranque aplica Flyway V1 y
+Con las variables definidas y una base vacía, el arranque aplica Flyway V1–V3 y
 Hibernate valida el esquema. Para bases preexistentes leer
 [docs/MIGRACIONES.md](docs/MIGRACIONES.md) **antes** de arrancar esta versión.
 
@@ -61,9 +61,10 @@ Hibernate valida el esquema. Para bases preexistentes leer
 ./mvnw -B -ntp clean verify
 ```
 
-Ejecuta tests H2 con la misma migración SQL y `ddl-auto=validate`; produce
+Ejecuta tests H2 con las mismas migraciones Flyway y `ddl-auto=validate`; produce
 `target/demo-0.0.1-SNAPSHOT.jar`. Incluye pruebas HTTP, reglas de negocio,
-repetición de migración sin pérdida de datos y restricciones de esquema.
+actualización desde V2 con órdenes existentes, repetición de migración sin pérdida
+de datos, restricciones de esquema, selección de Strategy y permisos por rol.
 
 Para validar contra **una base PostgreSQL temporal y vacía**, exportar
 `TEST_DB_URL`, `TEST_DB_USERNAME`, `TEST_DB_PASSWORD` y ejecutar:
@@ -84,10 +85,23 @@ detecta errores de espacios, pero no reemplaza un linter. No se cambiaron contro
 Con la API local y datos demo, PowerShell 7 permite verificaciones adicionales:
 
 ```powershell
-./verify-demo.ps1                 # Agrega otra tanda de proyectos/órdenes
-./verify-demo.ps1 -VerifyOnly     # Consulta y verifica los datos existentes
-./verify-delivery.ps1             # Crea cortes demo si faltan y verifica dashboard
+./verify-demo.ps1 -Tokens $tokens                 # Agrega proyectos/órdenes
+./verify-demo.ps1 -VerifyOnly -Tokens $tokens     # Verifica datos demo existentes
+./verify-delivery.ps1 -Tokens $tokens             # Agrega cortes y verifica dashboard
 ```
+
+`$tokens` es una hashtable en memoria cuyas claves son los roles y cuyos valores
+son JWT válidos emitidos por el entorno. El script demo completo requiere
+PERSONAL_OBRAS, RESPONSABLE_AUTORIZADO, JEFE_CUADRILLA, OPERARIO_CONTRATISTA e
+INSPECTOR_OBRA. VerifyOnly requiere PERSONAL_OBRAS; delivery requiere
+PERSONAL_OBRAS y JEFE_CUADRILLA. Ambos aceptan `-BaseUrl` y fallan antes de escribir
+si faltan tokens. No guardarlos en archivos versionados ni enviarlos en capturas.
+
+El login actual admite una sola cuenta/rol por instancia. No alcanza para emitir
+todos los tokens de una demo multiusuario; esa provisión está pendiente de acuerdo
+con el equipo. Las pruebas automatizadas verifican la matriz completa sin agregar
+usuarios ni mecanismos de acceso a producción. Ver [permisos y contratos](FRONTEND-CONTRACT.md)
+y [explicación de Strategy para la defensa](docs/ORDENES-STRATEGY.md).
 
 ## Docker local
 

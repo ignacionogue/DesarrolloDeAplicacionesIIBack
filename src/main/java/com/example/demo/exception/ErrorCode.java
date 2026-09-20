@@ -6,6 +6,8 @@ package com.example.demo.exception;
  */
 public enum ErrorCode {
     VALIDATION_ERROR,
+    UNAUTHORIZED,
+    FORBIDDEN,
     NOT_FOUND,
     INVALID_STATE_TRANSITION,
     BUSINESS_RULE_VIOLATION,

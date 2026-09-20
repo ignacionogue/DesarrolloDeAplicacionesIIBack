@@ -16,6 +16,9 @@ import java.util.Date;
 @Service
 public class JwtService {
 
+    public static final java.util.Set<String> ROLES = java.util.Set.of("PERSONAL_OBRAS", "RESPONSABLE_AUTORIZADO",
+            "JEFE_CUADRILLA", "OPERARIO_CONTRATISTA", "INSPECTOR_OBRA", "INGENIERO_ARQUITECTO");
+
     private final AuthProperties properties;
     private SecretKey signingKey;
 
@@ -30,6 +33,9 @@ public class JwtService {
         }
         if (isBlank(properties.username()) || isBlank(properties.password()) || isBlank(properties.role())) {
             throw new IllegalStateException("AUTH_USERNAME, AUTH_PASSWORD y AUTH_ROLE son obligatorios.");
+        }
+        if (!ROLES.contains(properties.role()) || properties.jwtExpirationMinutes() <= 0) {
+            throw new IllegalStateException("AUTH_ROLE debe ser un rol conocido y JWT_EXPIRATION_MINUTES debe ser positivo.");
         }
         signingKey = Keys.hmacShaKeyFor(properties.jwtSecret().getBytes(StandardCharsets.UTF_8));
     }

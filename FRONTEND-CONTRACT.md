@@ -1,6 +1,6 @@
 # Contrato para primera entrega
 
-Actualización de entrega: el esquema se administra con Flyway V1 y Hibernate
+Actualización de entrega: el esquema se administra con Flyway V1–V3 y Hibernate
 solo valida. Leer README.md y docs/MIGRACIONES.md antes de ejecutar sobre una base
 preexistente. La entrega se revisa mediante feature/* → develop; no implica deploy.
 
@@ -49,6 +49,30 @@ El token incluye el rol configurado en `AUTH_ROLE`; credenciales y `JWT_SECRET`
 son variables inyectadas por el entorno y no se versionan. `/api/health` sigue
 siendo público para infraestructura.
 
+### Permisos aplicados
+
+Todos los roles reconocidos pueden consultar el módulo. Para escrituras:
+
+| Rol | Operaciones |
+|---|---|
+| PERSONAL_OBRAS | Crear/editar proyectos y órdenes; enviar proyecto a aprobación; crear cuadrillas y cortes |
+| RESPONSABLE_AUTORIZADO | Aprobar/rechazar proyectos |
+| JEFE_CUADRILLA | Programar, iniciar/reanudar y pausar órdenes |
+| OPERARIO_CONTRATISTA | Completar órdenes |
+| INSPECTOR_OBRA | Validar o reabrir órdenes mediante validate |
+| INGENIERO_ARQUITECTO | Consultas; no se acordaron escrituras adicionales |
+
+Login responde `{"accessToken":"...","username":"...","role":"..."}`.
+Sin token válido: 401; con un rol sin permiso: 403. Swagger permite ingresar el
+Bearer JWT y documenta la seguridad en las operaciones del módulo.
+
+**Limitación del login existente:** una sola cuenta y un solo rol por instancia,
+configurados con AUTH_USERNAME/AUTH_PASSWORD/AUTH_ROLE. No existe todavía una
+gestión multiusuario. La demo completa con varios actores requiere resolver esa
+provisión con el equipo; no se permite enviar un rol en el login para elevar permisos.
+No hay endpoints `/api/auth/me` ni `/api/auth/logout`; el token vence y el cliente
+puede descartarlo, pero no hay revocación anticipada implementada.
+
 ## Paginacion y filtros
 
 Proyectos: ?search=&status=&page=0&size=10
@@ -94,22 +118,37 @@ estimatedDurationDays > 0):
 }
 ```
 
-Respuesta: campos del ejemplo excepto usedBudget, mas id, status y budgetProgress.
+Respuesta: campos del ejemplo excepto usedBudget, mas id, status, budgetProgress,
+approvedAt y approvalObservations (null hasta la aprobación).
 budgetProgress = usedBudget / approvedBudget * 100, redondeo entero; 0 si no hay
 presupuesto aprobado o es cero. physicalProgress va de 0 a 100. Presupuestos
 aprobado/usado no negativos. PUT requiere los obligatorios, no es un PATCH:
 reenviar los datos generales que se quieran conservar. usedBudget y physicalProgress
 omitidos conservan su valor en PUT.
 
-Los tres PATCH de aprobacion no llevan body:
+submit-approval y reject no llevan body. approve requiere:
+
+```json
+{"approvedBudget":100000,"approvedDeadlineDays":90,"approvedAt":"2026-09-22","observations":"Aprobado según planificación."}
+```
+
+approvedBudget > 0 (máximo 13 enteros y 2 decimales), approvedDeadlineDays > 0
+y approvedAt (fecha ISO válida) son obligatorios. observations es opcional,
+máximo 1000 caracteres. Datos ausentes/incorrectos: 400 con el contrato de errores.
+Devuelve el proyecto completo actualizado, con `status: "APROBADO"`, importes,
+plazo, approvedAt y approvalObservations. GET individual y listado incluyen esos
+campos. Aprobar fuera de PENDIENTE_APROBACION devuelve 409.
+
+Una vez aprobado, PUT no permite cambiar presupuesto/plazo aprobado (422).
+Omitirlos conserva sus valores; también pueden reenviarse sin modificaciones.
 
 - BORRADOR --submit-approval--> PENDIENTE_APROBACION.
-- PENDIENTE_APROBACION --approve--> estado interno APROBADO, status visible SIN_INICIAR.
+- PENDIENTE_APROBACION --approve--> APROBADO.
 - PENDIENTE_APROBACION --reject--> RECHAZADO.
 
 status combina aprobacion y actividad. El filtro APROBADO incluye los proyectos
 aprobados independientemente de su actividad. Valores de actividad preparados:
-SIN_INICIAR, EN_EJECUCION, PAUSADA, FINALIZADA. Aun no hay endpoints para modificar
+SIN_INICIAR (se muestra APROBADO), EN_EJECUCION, PAUSADA, FINALIZADA. Aun no hay endpoints para modificar
 actividad del proyecto. No usar APROBADA/RECHAZADA del mock del front.
 El evento de aprobacion por ahora se registra en log; no se publica en Azure.
 
@@ -121,12 +160,31 @@ POST/PUT (obligatorios origin, description, priority):
 {"sourceRequestId":"demo-ticket-1","origin":"ATENCION_CIUDADANA","description":"Reparar bache","interventionType":"Calzada","location":"Av. Lima 717","priority":"ALTA","estimatedDurationHours":6,"crew":"Demo Norte"}
 ```
 
-origin: MANUAL, ATENCION_CIUDADANA, INSPECCION.
+origin: MANUAL, PROYECTO, ATENCION_CIUDADANA, INSPECCION.
+
+Para vincular a un proyecto:
+
+```json
+{"origin":"PROYECTO","projectId":1,"description":"Reparación de calzada del proyecto","priority":"ALTA","estimatedDurationHours":6}
+```
+
+PROYECTO exige projectId positivo y existente (400 si falta/no es válido, 404 si
+no existe). No se impone un estado de aprobación del proyecto, porque no se acordó
+esa restricción. Los demás orígenes deben omitir projectId o enviarlo null.
+MANUAL sigue funcionando sin proyecto. La respuesta de alta, edición, detalle,
+listado y transiciones agrega projectId (null para órdenes independientes).
+PUT exige reenviar projectId si mantiene origin PROYECTO; si se cambia
+explícitamente a MANUAL sin projectId, se desvincula. Conserva el estado del flujo.
+El filtro `?origin=PROYECTO` está disponible.
+
+ATENCION_CIUDADANA e INSPECCION conservan el alta HTTP anterior. Esto no implementa
+consumidores ni contratos de eventos M6/M7; esas integraciones quedan pendientes.
 priority: BAJA, MEDIA, ALTA. CRITICA/Ambiente/Transito requieren un acuerdo posterior.
 crew es el nombre de una cuadrilla existente, no su ID. Puede omitirse.
 sourceRequestId, crew, scheduledDate, outcome y otros opcionales pueden ser null
 en respuestas. hasEvidence es boolean calculado; no hay carga HTTP de fotos aun.
-outcome es texto libre, no un enum SUCCESS/REQUIRES_REVISION.
+outcome es texto libre, no un enum SUCCESS/REQUIRES_REVISION. outcome y observations
+en validate admiten hasta 1000 caracteres; excesos devuelven 400.
 
 Crear sin cuadrilla produce PENDIENTE; con cuadrilla, ASIGNADA. PUT actualiza datos
 generales y ajusta asignacion solo en estados tempranos; no reinicia una orden
@@ -173,7 +231,8 @@ GET /api/public-works/dashboard/summary devuelve:
 - totalProjects: todos los proyectos.
 - activeProjects: aprobados que no estan FINALIZADA (incluye SIN_INICIAR y PAUSADA).
 - openWorkOrders: todas excepto COMPLETADA y VALIDADA; incluye REABIERTA.
-- externalWorkOrders: todas las ordenes cuyo origin no es MANUAL, incluso terminadas.
+- externalWorkOrders: órdenes ATENCION_CIUDADANA/INSPECCION, incluso terminadas;
+  excluye MANUAL y PROYECTO.
   Son ordenes externas, no un registro de alertas o eventos recibidos.
 - delayedWorkOrders: abiertas cuya scheduledDate es anterior a asOfDate.
   Aproximacion diaria; no se mide demora horaria ni retraso historico de cerradas.
@@ -202,9 +261,12 @@ GET crews devuelve un array; POST crews recibe {"nombre":"Cuadrilla nueva"}.
 ```
 
 400 VALIDATION_ERROR: validacion, enums en escritura, JSON/ID mal formado.
+401 UNAUTHORIZED: credenciales incorrectas, token ausente, inválido o vencido.
+403 FORBIDDEN: el rol no puede ejecutar la operación.
 404 NOT_FOUND: entidad relacionada o solicitada inexistente.
 409 INVALID_STATE_TRANSITION: accion no permitida en el estado actual.
-422 BUSINESS_RULE_VIOLATION: fechas de corte invertidas o cuadrilla duplicada.
+422 BUSINESS_RULE_VIOLATION: fechas de corte invertidas, cuadrilla duplicada o
+intento de modificar datos aprobados mediante PUT.
 500 INTERNAL_ERROR: error no previsto; no incluye stack trace.
 
 ## CORS, despliegue y demo
@@ -215,7 +277,7 @@ Configurar la URL real del front desplegado ademas de las locales. No puede
 confirmarse CORS remoto hasta conocer y probar el dominio. Swagger esta fuera de /api.
 
 Infra debe configurar DB_URL, DB_USERNAME y DB_PASSWORD. El puerto es PORT o
-SERVER_PORT (8080). PostgreSQL es persistente; Flyway V1 crea el esquema y
+SERVER_PORT (8080). PostgreSQL es persistente; Flyway V1–V3 administra el esquema y
 ddl-auto=validate comprueba las entidades. No usar credenciales locales en Azure.
 
 Integracion con develop: se conservan Docker, CI, Actuator y el health check de
@@ -225,9 +287,10 @@ un valor por defecto en Git. /actuator/health mantiene las probes de infraestruc
 
 APP_DEMO_ENABLED=true carga materiales/maquinaria solo si sus catalogos estan vacios.
 verify-demo.ps1 carga otra tanda de 4 proyectos/8 ordenes; -VerifyOnly no los crea.
+Ambos scripts requieren `-Tokens` con JWT válidos por rol; consultar README.
 verify-delivery.ps1 agrega cortes demo idempotentes y verifica lo nuevo.
 Los datos demo no son datos municipales reales. No hay usuarios de prueba.
 
 Se pueden conectar los endpoints de la tabla con este contrato y el OpenAPI
-exportado. Auth, integraciones externas, actividad de proyectos y evidencias
+exportado. Gestión multiusuario, integraciones externas, actividad de proyectos y evidencias
 quedan pendientes; no se promete inmutabilidad de futuras ampliaciones.
