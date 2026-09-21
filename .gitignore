@@ -1,6 +1,12 @@
 HELP.md
 verification-results.json
 delivery-results.json
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.local-validation/
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/

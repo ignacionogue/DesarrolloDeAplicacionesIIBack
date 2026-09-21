@@ -73,7 +73,7 @@ public class OrdenTrabajoController {
     @PatchMapping("/{id}/complete")
     @Operation(summary = "EN_EJECUCION/PAUSADA -> COMPLETADA")
     public ResponseEntity<OrdenTrabajoResponse> completar(@PathVariable Long id,
-                                                           @RequestBody(required = false) CompleteOTRequest request) {
+                                                           @Valid @RequestBody(required = false) CompleteOTRequest request) {
         return ResponseEntity.ok(service.completar(id, request != null ? request : new CompleteOTRequest()));
     }
 

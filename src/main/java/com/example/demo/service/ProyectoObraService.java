@@ -1,10 +1,12 @@
 package com.example.demo.service;
 
 import com.example.demo.dto.request.ProyectoObraRequest;
+import com.example.demo.dto.request.ProjectApprovalRequest;
 import com.example.demo.dto.response.PageResponse;
 import com.example.demo.dto.response.ProyectoObraResponse;
 import com.example.demo.exception.InvalidStateTransitionException;
 import com.example.demo.exception.NotFoundException;
+import com.example.demo.exception.BusinessRuleException;
 import com.example.demo.integration.ProjectEventPublisher;
 import com.example.demo.mapper.ProyectoObraMapper;
 import com.example.demo.model.EstadoAprobacion;
@@ -51,6 +53,14 @@ public class ProyectoObraService {
     @Transactional
     public ProyectoObraResponse actualizar(Long id, ProyectoObraRequest request) {
         ProyectoObra proyecto = buscarOrFallar(id);
+        if (proyecto.getApprovalStatus() == EstadoAprobacion.APROBADO
+                && ((request.getApprovedBudget() != null && (proyecto.getApprovedBudget() == null
+                    || request.getApprovedBudget().compareTo(proyecto.getApprovedBudget()) != 0))
+                || (request.getApprovedDeadlineDays() != null
+                    && !request.getApprovedDeadlineDays().equals(proyecto.getApprovedDeadlineDays())))) {
+            throw new BusinessRuleException(
+                    "Los datos aprobados no pueden modificarse mediante la edicion general");
+        }
         mapper.updateEntity(proyecto, request);
         return mapper.toResponse(repository.save(proyecto));
     }
@@ -64,10 +74,10 @@ public class ProyectoObraService {
     }
 
     @Transactional
-    public ProyectoObraResponse aprobar(Long id) {
+    public ProyectoObraResponse aprobar(Long id, ProjectApprovalRequest request) {
         ProyectoObra proyecto = buscarOrFallar(id);
         validarTransicion(proyecto, EstadoAprobacion.PENDIENTE_APROBACION, "aprobar");
-        proyecto.aprobar();
+        proyecto.aprobar(request.approvedBudget(), request.approvedDeadlineDays(), request.approvedAt(), request.observations());
         ProyectoObra guardado = repository.save(proyecto);
         eventPublisher.publishProjectApproved(guardado.getId(), guardado.getName());
         return mapper.toResponse(guardado);

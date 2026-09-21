@@ -23,6 +23,8 @@ public record ProyectoObraResponse(
         Integer budgetProgress,
         String status,
         String technicalManager,
-        String contractor
+        String contractor,
+        LocalDate approvedAt,
+        String approvalObservations
 ) {
 }

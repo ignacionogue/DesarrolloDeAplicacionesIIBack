@@ -2,6 +2,7 @@ package com.example.demo.model;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
@@ -62,6 +63,14 @@ public class OrdenTrabajo {
     @ManyToOne
     @JoinColumn(name = "cuadrilla_id")
     private Cuadrilla cuadrilla;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "project_id")
+    private ProyectoObra project;
+
+    public ProyectoObra getProject() { return project; }
+
+    public void setProject(ProyectoObra project) { this.project = project; }
 
     private LocalDate scheduledDate;
 

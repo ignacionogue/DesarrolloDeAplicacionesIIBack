@@ -20,12 +20,32 @@ class DeliveryApiTests {
     @Autowired CuadrillaRepository crews;
     @Autowired StreetClosureRepository closures;
     @Autowired DashboardService dashboard;
+    @Autowired TestUsers jwt;
 
     private HttpResponse<String> call(String method, String path, String body) throws Exception {
+        String token = jwt.issueToken("delivery.fixture", method.equals("PATCH") ? "JEFE_CUADRILLA" : "PERSONAL_OBRAS");
         return HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
                 .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + token)
                 .method(method, body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body))
                 .build(), HttpResponse.BodyHandlers.ofString());
+    }
+
+    private String login() throws Exception {
+        var response = HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/auth/login"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString("{\"username\":\"test.user\",\"password\":\"test-password\"}"))
+                .build(), HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode());
+        return response.body().replaceFirst(".*\\\"accessToken\\\":\\\"([^\\\"]+)\\\".*", "$1");
+    }
+
+    @Test
+    void protectedEndpointsRequireAValidJwt() throws Exception {
+        var anonymous = HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/public-works/projects"))
+                .GET().build(), HttpResponse.BodyHandlers.ofString());
+        assertEquals(401, anonymous.statusCode());
+        assertFalse(login().isBlank());
     }
     private OrdenTrabajo order(Cuadrilla crew) {
         return orders.save(new OrdenTrabajo(null, OrigenOT.MANUAL, "Prueba entrega", "Calzada", "Lima 700",
