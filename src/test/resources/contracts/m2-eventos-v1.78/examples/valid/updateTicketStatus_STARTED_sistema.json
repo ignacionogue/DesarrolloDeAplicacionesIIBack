@@ -1,0 +1,19 @@
+{
+  "eventId": "9d595a50-666c-4105-b457-ea9f8487ae60",
+  "eventType": "updateTicketStatus",
+  "eventVersion": "1.0",
+  "occurredAt": "2026-10-08T08:00:05-03:00",
+  "sourceModule": "obras",
+  "correlationId": "f80baa55-02b2-4cb0-bd51-d97c0c54e948",
+  "causationId": "61e12153-345e-4c9c-8b1a-724da1c75191",
+  "data": {
+    "ticketId": "550e8400-e29b-41d4-a716-446655440000",
+    "updateType": "STARTED",
+    "publicMessage": "Obras Públicas comenzó a gestionar tu reclamo.",
+    "updatedBy": {
+      "type": "SYSTEM",
+      "id": null
+    },
+    "updateOccurredAt": "2026-10-08T08:00:01-03:00"
+  }
+}

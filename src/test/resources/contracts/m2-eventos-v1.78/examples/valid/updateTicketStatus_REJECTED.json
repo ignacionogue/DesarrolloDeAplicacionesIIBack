@@ -1,0 +1,25 @@
+{
+  "eventId": "54e76614-6fcb-4684-a988-7928c2d2cccb",
+  "eventType": "updateTicketStatus",
+  "eventVersion": "1.0",
+  "occurredAt": "2026-10-08T12:15:03-03:00",
+  "sourceModule": "obras",
+  "correlationId": "22cf77b6-ea30-4d34-8939-233e9ba7baca",
+  "causationId": null,
+  "data": {
+    "ticketId": "550e8400-e29b-41d4-a716-446655440000",
+    "updateType": "REJECTED",
+    "publicMessage": "La calle indicada es de jurisdicción provincial; no corresponde a la Municipalidad.",
+    "internalMessage": "Ruta provincial 4: derivar a Vialidad Provincial.",
+    "details": {
+      "cancellation": {
+        "reasonCode": "OUT_OF_SCOPE"
+      }
+    },
+    "updatedBy": {
+      "type": "EXTERNAL_USER",
+      "id": "3b9f1c52-6a7e-4d08-9c41-5e2a8d7f0b13"
+    },
+    "updateOccurredAt": "2026-10-08T12:15:00-03:00"
+  }
+}
