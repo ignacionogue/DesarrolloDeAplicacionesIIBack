@@ -16,8 +16,8 @@ import org.springframework.scheduling.annotation.*;
 public class MessagingConfiguration {
     @Bean(destroyMethod="destroy")
     CachingConnectionFactory eventConnectionFactory(Environment env, javax.sql.DataSource database) throws Exception {
-        if (!env.getProperty("app.messaging.partial-integration-acknowledged",Boolean.class,false))
-            throw new IllegalStateException("Integration is incomplete: enable only in an isolated test environment after reviewing docs/INTEGRACION-EVENTOS.md");
+        if (!env.getProperty("app.messaging.tls",Boolean.class,true))
+            throw new IllegalStateException("AMQPS requires TLS; RABBITMQ_TLS_ENABLED cannot be false");
         try (var connection=database.getConnection()) {
             if (!connection.getMetaData().getDatabaseProductName().equals("PostgreSQL"))
                 throw new IllegalStateException("Messaging requires PostgreSQL");
@@ -26,11 +26,13 @@ public class MessagingConfiguration {
         client.setHost(env.getRequiredProperty("app.messaging.host"));
         client.setPort(env.getRequiredProperty("app.messaging.port",Integer.class));
         client.setUsername(env.getRequiredProperty("app.messaging.username"));
-        client.setPassword(env.getRequiredProperty("app.messaging.password"));
-        client.setVirtualHost(env.getProperty("app.messaging.vhost","/"));
-        if(env.getProperty("app.messaging.tls",Boolean.class,false)) {
-            client.useSslProtocol(); client.enableHostnameVerification();
-        }
+        var password=env.getRequiredProperty("app.messaging.password");
+        if(password.isBlank()) throw new IllegalStateException("RABBITMQ_PASSWORD is required when messaging is enabled");
+        client.setPassword(password);
+        client.setVirtualHost(env.getProperty("app.messaging.vhost","core"));
+        // Trust the JVM certificate store and verify the server DNS name.
+        client.useSslProtocol(javax.net.ssl.SSLContext.getDefault());
+        client.enableHostnameVerification();
         var factory=new CachingConnectionFactory(client);
         factory.setPublisherConfirmType(CachingConnectionFactory.ConfirmType.CORRELATED);
         factory.setPublisherReturns(true);

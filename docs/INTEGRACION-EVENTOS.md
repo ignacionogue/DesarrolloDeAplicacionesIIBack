@@ -5,7 +5,7 @@
 Implementación local en feature/integracion-core-rabbitmq, desde origin/develop
 73bf4495db9c296e0ac93d93683ef1128d971590. No se modificaron Frontend, Azure,
 Terraform ni pipelines. No se debe declarar completa la integración compartida:
-faltan el contrato de autenticación Core y la prueba bilateral real.
+faltan credenciales AMQPS, habilitación de IP de salida y la prueba bilateral real.
 
 | Área | Implementado y probado localmente | Pendiente externo |
 | --- | --- | --- |
@@ -15,7 +15,7 @@ faltan el contrato de autenticación Core y la prueba bilateral real.
 | M6 | Tres handlers, monitoreo de árboles, Strategy AMBIENTE, Scheduled/Completed para solicitudes de reparación | Confirmar UUID de workOrderId; detalle de consumedMaterials no inventado |
 | M7 | Solicitud/prórroga, aprobación/rechazo/finalización, ventanas autorizadas, proyección minimizada de accidentes | Confirmar sourceRef/accidentId/inspectorId; corregir nombre histórico en Core |
 | M1 | Puerto existente ampliado para aprobación/finalización y puerto de resolución deshabilitado | Casing, envelope, payload y resultados de resolución |
-| Core HTTP | Variables externas declaradas | No hay cliente/token real hasta conocer request/response y cómo se usa con AMQP |
+| Core HTTP | Variables externas declaradas | Cliente pendiente del contrato completo de respuesta/errores; no interviene en AMQPS |
 
 ## Diagnóstico inicial y fuentes
 
@@ -184,15 +184,34 @@ MESSAGING_ENABLED, CORE_BASE_URL, CORE_MODULE_NAME, CORE_MACHINE_SECRET,
 RABBITMQ_HOST, RABBITMQ_PORT, RABBITMQ_USERNAME, RABBITMQ_PASSWORD, RABBITMQ_VHOST,
 RABBITMQ_TLS_ENABLED, CORE_EXCHANGE, CORE_QUEUE y flags de confirmación anteriores.
 
-MESSAGING_ENABLED=false no crea conexión/listener Rabbit. En pruebas aisladas,
-la conexión directa requiere además MESSAGING_PARTIAL_INTEGRATION_ACKNOWLEDGED=true
-y PostgreSQL. No declara exchange, cola ni bindings: Core administra muni.inbox/q.obras.
-Ese flag no afirma que esté resuelta la autenticación Core.
+MESSAGING_ENABLED=false no crea conexión/listener Rabbit. Según la guía común AWS
+recibida (20/10/2026), los valores predeterminados son host
+core-uade-2026.duckdns.org, puerto 5671, vhost core, usuario module_obras,
+exchange muni.inbox, routing key vacía y cola q.obras. La contraseña se suministra
+privadamente mediante RABBITMQ_PASSWORD. Mantener MESSAGING_ENABLED=false hasta
+recibirla y habilitar con Core la IP pública de salida del backend.
 
-Falta request/response de POST /api/v1/auth/module-token y cómo emplear su token
-con AMQP. No se inventaron campos, endpoints, transporte del token ni un cliente
-que simule obtenerlo. Su renovación RS256/900 segundos queda pendiente de ese contrato.
+TLS es obligatorio: se rechaza RABBITMQ_TLS_ENABLED=false al habilitar mensajería.
+Se utiliza SSLContext de Java con su almacén de confianza y verificación de hostname,
+sin fijar un certificado ni aceptar certificados arbitrarios. Ver
+[documentación TLS de RabbitMQ](https://www.rabbitmq.com/docs/ssl).
+PostgreSQL sigue siendo obligatorio. No se declara exchange, cola ni bindings:
+el contenedor consulta pasivamente q.obras y Core administra la topología.
+Se eliminó MESSAGING_PARTIAL_INTEGRATION_ACKNOWLEDGED, que era una barrera provisional.
 
+El token de POST /api/v1/auth/module-token es exclusivamente HTTP; nunca se usa
+como contraseña AMQPS. CORE_BASE_URL, CORE_MODULE_NAME y CORE_MACHINE_SECRET
+permanecen separados y no son necesarios para abrir la conexión AMQPS. La guía
+indica el request module/secret y los nombres accessToken/expiresIn, pero falta
+el contrato completo de respuesta/errores: el cliente y renovación siguen pendientes,
+sin DTO inventado ni registro automático de publicaciones/suscripciones.
+
+La guía describe un único ambiente compartido. Coordinar emisor, destinatarios,
+payload ficticio y horario antes de publicar. Resolver con Core la diferencia
+entre diez suscripciones registradas y las nueve esperadas, sin modificar alias
+ni suscripciones automáticamente. Un publisher confirm acredita recepción por
+RabbitMQ, no procesamiento de negocio. Conservar eventId en retransmisiones.
+No se intentó ninguna conexión ni publicación al ambiente compartido.
 Métricas Micrometer: obras.events por resultado y obras.outbox.backlog. Logs con
 eventId/eventType/correlationId/sourceModule/resultado. No se registran tokens,
 secretos, DNI ni payload completo. Los endpoints de métricas no se abren públicamente.
@@ -200,8 +219,12 @@ secretos, DNI ni payload completo. Los endpoints de métricas no se abren públi
 ## Validación y límites
 
 - ./mvnw.cmd test: todas las pruebas existentes conservadas y nuevas de eventos.
-- ./mvnw.cmd verify: 94 pruebas aprobadas, JAR generado.
-- Perfil postgres-test sobre una base local desechable: 94 aprobadas, JAR generado.
+- Ajuste AWS (22/10): ./mvnw.cmd test aprobó 97 pruebas; verify final aprobó 98
+  con la prueba adicional de mandatory return y generó el JAR.
+- Pruebas nuevas: TLS obligatorio, hostname, credenciales AMQP independientes,
+  contraseña vacía, configuración manual/pasiva y devolución aunque exista confirm.
+- Validación previa del perfil postgres-test sobre base local desechable: 94 aprobadas,
+  JAR generado. Este ajuste de transporte no cambia schema ni persistencia; no se repitió ese perfil.
 - Upgrade desde V2/V4/V6 y creación desde base vacía, incluyendo usuarios/órdenes
   anteriores y cortes de fechas simples. Repetir migraciones no cambia sus UUID.
 - Pruebas de deduplicación, rollback, recuperación, concurrencia, reintentos de
@@ -213,7 +236,8 @@ secretos, DNI ni payload completo. Los endpoints de métricas no se abren públi
 
 ## Para DevOps y Frontend
 
-DevOps: revisar V5-V9, proporcionar el contrato Core/token, confirmar UUID con M6/M7
+DevOps: revisar V5-V9, obtener contraseña AMQPS y habilitar la IP pública de salida;
+proporcionar contrato completo HTTP/token, confirmar UUID con M6/M7
 y el nombre streetClosureEnded; configurar variables como secretos del ambiente.
 Autorizar luego despliegue y prueba bilateral. Este PR no despliega ni registra
 contratos/topología en Core y no debe considerarse integración compartida completa.

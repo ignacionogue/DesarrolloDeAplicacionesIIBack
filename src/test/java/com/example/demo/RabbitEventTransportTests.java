@@ -33,4 +33,16 @@ class RabbitEventTransportTests {
         var error=assertThrows(IllegalStateException.class,()->new RabbitEventTransport(template,codec,"muni.inbox").publish(event));
         assertEquals("PUBLICATION_NOT_CONFIRMED",error.getMessage());assertNull(error.getCause());
     }
+    @Test void mandatoryReturnFailsEvenWhenBrokerConfirms() {
+        var template=mock(RabbitTemplate.class); var codec=mock(EventSerialization.class);
+        when(codec.encode(any())).thenReturn("{}");
+        doAnswer(call->{
+            CorrelationData correlation=call.getArgument(3);
+            correlation.setReturned(new ReturnedMessage(new Message(new byte[0]),312,"private routing info","muni.inbox",""));
+            correlation.getFuture().complete(new CorrelationData.Confirm(true,null)); return null;
+        }).when(template).send(anyString(),anyString(),any(Message.class),any(CorrelationData.class));
+        var event=EventEnvelope.outgoing("testEvent",JsonMapper.builder().build().createObjectNode(),null,null);
+        var error=assertThrows(IllegalStateException.class,()->new RabbitEventTransport(template,codec,"muni.inbox").publish(event));
+        assertEquals("PUBLICATION_NOT_CONFIRMED",error.getMessage()); assertNull(error.getCause());
+    }
 }
