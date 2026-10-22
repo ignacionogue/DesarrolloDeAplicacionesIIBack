@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "workOrderScheduled",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventId",
+    "eventType",
+    "eventVersion",
+    "occurredAt",
+    "sourceModule",
+    "correlationId",
+    "data"
+  ],
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "eventType": {
+      "const": "workOrderScheduled"
+    },
+    "eventVersion": {
+      "const": "1.0"
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sourceModule": {
+      "const": "obras"
+    },
+    "correlationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "causationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceRequestId",
+        "workOrderId"
+      ],
+      "properties": {
+        "sourceRequestId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "workOrderId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "workOrderNumber": {
+          "type": "string",
+          "minLength": 1
+        },
+        "estimatedDuration": {
+          "type": "string",
+          "format": "duration"
+        }
+      }
+    }
+  }
+}

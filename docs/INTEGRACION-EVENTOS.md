@@ -1,145 +1,225 @@
-# Integración Core y RabbitMQ
+# Integración de eventos M3: estado y entrega
 
-## Estado al 21 de octubre de 2026
+## Estado
 
-Trabajo en curso en `feature/integracion-core-rabbitmq`, creada desde
-`origin/develop` (`73bf449`). Ya existen envelope, registro de handlers,
-adaptador AMQP, Inbox/Outbox y proyección de ticketUpdated. No es una entrega
-completa: faltan los casos de uso emisores y los handlers M6/M7.
-MESSAGING_ENABLED=false por defecto. Se requiere además reconocimiento explícito
-de integración parcial para activar el adaptador en un entorno aislado de pruebas.
-REST, frontend e infraestructura del equipo no se modificaron en esta etapa.
+Implementación local en feature/integracion-core-rabbitmq, desde origin/develop
+73bf4495db9c296e0ac93d93683ef1128d971590. No se modificaron Frontend, Azure,
+Terraform ni pipelines. No se debe declarar completa la integración compartida:
+faltan el contrato de autenticación Core y la prueba bilateral real.
 
-## Fuentes recibidas y verificación
+| Área | Implementado y probado localmente | Pendiente externo |
+| --- | --- | --- |
+| Transporte | Listener manual, NACK sin requeue, JSON persistente, confirms/returns, sin declarar topología | RabbitMQ 4.3/Core compartido |
+| Persistencia | Inbox/Outbox, recuperación, deduplicación, bloqueo concurrente y orden de publicación por gestión | Operación y monitoreo del ambiente |
+| M2 | ticketUpdated, gestión única, actualización por updatedAt, seis variantes de salida y vínculo a órdenes | Prueba bilateral v1.78 |
+| M6 | Tres handlers, monitoreo de árboles, Strategy AMBIENTE, Scheduled/Completed para solicitudes de reparación | Confirmar UUID de workOrderId; detalle de consumedMaterials no inventado |
+| M7 | Solicitud/prórroga, aprobación/rechazo/finalización, ventanas autorizadas, proyección minimizada de accidentes | Confirmar sourceRef/accidentId/inspectorId; corregir nombre histórico en Core |
+| M1 | Puerto existente ampliado para aprobación/finalización y puerto de resolución deshabilitado | Casing, envelope, payload y resultados de resolución |
+| Core HTTP | Variables externas declaradas | No hay cliente/token real hasta conocer request/response y cómo se usa con AMQP |
 
-- Guía `Eventos M2 - V1.78.docx`, proporcionada por el equipo.
-- Paquete `m2-eventos-v1.78-schemas.zip`.
-- Consigna `M3_Prompt_Backend_Integracion_Completa_v1.78.txt`.
-- Contrato M3 v0.6, conservado en `docs/contracts/contrato-m3-v0.6.md`;
-  reemplaza v0.5 y distingue propuestas UUID de acuerdos confirmados.
+## Diagnóstico inicial y fuentes
 
-SHA-256 comprobado antes de extraer el ZIP:
+El backend existente tenía REST, seguridad JWT multiusuario, Strategy para altas,
+PostgreSQL/Flyway V1-V4 y un ProjectEventPublisher que solo registraba un log.
+Los cortes usaban fechas sin hora y tramos de texto; no existían Inbox/Outbox.
 
-```text
+Fuentes: contrato-m3-v0.6.md recibido, guía M2 v1.78 y su ZIP de schemas.
+Antes de copiar se verificó el SHA-256:
 f20347c6cea5e9197e11d73cb3aef77db6fffd4c342ab75232381775c671b27f
-```
 
-El contenido original se conserva sin cambios en
-`src/test/resources/contracts/m2-eventos-v1.78/`. Incluye schemas Draft 2020-12,
-ejemplos y el validador suministrado; no es una dependencia del runtime Java.
-Los schemas `core-registration` son material de referencia: no se registraron
-ni se enviaron a Core.
+Las 47 entradas del paquete M2 quedaron en src/test/resources/contracts/m2-eventos-v1.78.
+Los schemas requeridos por runtime se copian sin cambios a resources/contracts/m2-v1.78.
+El validador original aceptó 33 ejemplos válidos y rechazó 68 inválidos.
+El contrato M3 recibido se conserva en docs/contracts/contrato-m3-v0.6.md.
 
-Se ejecutó el `validate.py` recibido, con validación de formatos habilitada:
-33 ejemplos válidos aceptados y 68 casos inválidos rechazados. Esto verifica el
-paquete contractual, no un consumidor/productor implementado en el backend.
-Dependencias de esta ejecución local: jsonschema 4.26.0, referencing 0.37.0 y
-rfc3339-validator 0.1.4. Para reproducir, instalar `jsonschema[format]` y
-`referencing` en un entorno Python de pruebas y ejecutar el validador del paquete.
+## Arquitectura y decisiones
 
-## Diagnóstico inicial del backend antes de estos cambios
+- Controller recibe HTTP; servicios coordinan; handlers separados por eventType
+  procesan eventos. Un registro selecciona el handler y comprueba el productor.
+  RabbitMQ queda en infrastructure/integration, fuera de controladores y entidades.
+- Se reutilizan las entidades, repositorios, servicios, seguridad y Strategy
+  existentes. No se reemplazan los endpoints anteriores.
+- Inbox confirma la recepción por separado. Procesar bloquea la fila y confirma
+  conjuntamente el efecto y su resultado. Una interrupción queda recuperable.
+  eventId único impide repetir efectos. Errores guardan códigos, no excepciones/payloads.
+- Outbox exige la transacción de negocio. Conserva eventId al reintentar y usa
+  confirms/returns antes de marcar PUBLISHED. Una caída tras confirmar en Rabbit
+  puede repetir la entrega: se mantiene at-least-once, no se promete exactly-once.
+- Un advisory lock PostgreSQL serializa secuencias de la misma gestión hasta commit.
+  El publicador usa SKIP LOCKED y no adelanta mensajes pendientes de esa gestión.
+- El envelope saliente contiene solo los campos acordados. correlationId siempre
+  existe. Una acción HTTP posterior conserva la correlación, pero no inventa
+  causationId a partir de un evento histórico.
+- Los UUID técnicos de personas y órdenes son persistentes; REST conserva sus IDs
+  numéricos. updatedBy se obtiene del usuario autenticado en base de datos, nunca
+  del body; un proceso automático se identifica SYSTEM.
+- Las mutaciones de órdenes bloquean la fila antes de validar la transición.
+  Dos inicios simultáneos no producen dos efectos/eventos.
 
-- Hay un puerto ProjectEventPublisher; su implementación actual solo escribe logs.
-- No hay AMQP, Inbox, Outbox ni cliente de autenticación Core.
-- Flyway utiliza V1–V4. La próxima versión libre observada es V5; verificarla de
-  nuevo al implementar para evitar colisiones con cambios de otros integrantes.
-- Órdenes y usuarios tienen identificadores Long. Para integración se necesitan
-  UUID persistentes adicionales, preservando IDs y contratos REST existentes.
-- StreetClosure usa fechas LocalDate y tramos String. No se pueden convertir esos
-  datos a ventanas con offset ni a objetos de tramo inventando zona, horarios o
-  límites. La evolución debe conservar el REST vigente y distinguir solicitudes
-  con información suficiente para publicar de las que requieren completarse.
+## M2: gestión y decisiones
 
-## Decisiones contractuales verificadas de M2
+Solo se procesa negocio para responsibleAreaId=M3. Otros destinos, ticketCreated
+y RECLASSIFICATION se ignoran. Los tickets se consolidan por ticketId. ROUTED
+hidrata categoría/subcategoría/reasignación; una derivación tardía no retrocede
+el estado más reciente. Información, adjuntos y escalamiento conservan sus tiempos.
+PRIORITY_CHANGED marca revisión de planificación; ESCALATION_CHANGED no cambia
+el estado de la orden. No se inventa una equivalencia CRITICAL -> prioridad local.
 
-- Consumir ticketUpdated y filtrar responsibleAreaId=M3; ticketCreated no inicia
-  negocio de Obras. No persistir contenido de tickets ajenos en una Inbox genérica.
-- category/subcategory están dentro de details.routing en ROUTED. updatedAt está
-  en data y no se debe reemplazar por occurredAt para ordenar cambios de negocio.
-- RECLASSIFICATION no habilita trabajo; una derivación ROUTED posterior sí.
-- M2 publica snapshots ROUTED y deltas posteriores. Un control temporal global
-  que descarte un ROUTED antiguo recibido después de un delta puede perder la
-  información inicial: el diseño debe conservar datos base sin regresar estado.
-- El envelope de entrada M2 permite correlationId/causationId ausentes o null.
-  La salida M3 debe ser más estricta: correlationId siempre UUID y causationId
-  omitido cuando no hay causa. No endurecer el schema M2 recibido unilateralmente.
-- updateTicketStatus usa updateOccurredAt, updatedBy y updateType; no newStatus.
-  updatedBy.id identifica a la persona mediante un UUID persistente. El paquete
-  permite null por ausencia real de persona identificable; las acciones de una
-  persona local identificada deben aportar su UUID, no un UUID nuevo por evento.
-- STARTED y PROGRESS requieren orden operativo aun cuando RabbitMQ no garantice
-  orden. La futura Outbox necesita secuenciación por gestión y confirmaciones;
-  ordenar una consulta por createdAt solamente no resuelve concurrencia/reintentos.
+ROUTED abre la gestión. El operador evalúa y crea la orden por el POST existente,
+origin=ATENCION_CIUDADANA y sourceRequestId=ticketId. No se inventa una intervención
+a partir de una categoría. Una gestión recibida admite una sola orden vinculada.
+Referencias históricas sin proyección siguen compatibles.
 
-## Pendientes externos
+Programar/iniciar/pausar generan PROGRESS, precedido de STARTED si corresponde.
+Completar genera RESOLVED/ACTION_COMPLETED con un mensaje público fijo: no se
+publica automáticamente el texto libre de outcome. M3 no cambia el estado de M2.
+CANCELLED bloquea nuevas acciones pero no cancela la intervención iniciada;
+pausarla/completarla sigue permitido sin emitir una resolución contradictoria.
+REOPENED reactiva la misma gestión y reinicia el seguimiento de STARTED.
 
-Se recibió M3 v0.6. Sus propuestas UUID M6/M7 y los contratos M1 todavía
-requieren las confirmaciones bilaterales enumeradas en ese documento.
+Nuevo endpoint, rol PERSONAL_OBRAS:
+POST /api/public-works/tickets/{ticketId}/updates
 
-También falta el contrato exacto request/response de
-`POST /api/v1/auth/module-token` y cómo se emplea ese token en la integración
-AMQP/Core. Conocer la ruta, algoritmo y duración no define nombres de campos,
-headers o credenciales AMQP; no deben inventarse.
+Body: updateType, publicMessage/internalMessage opcionales, progress opcional,
+details y attachments según el schema M2. La respuesta 202 confirma el encolado,
+no la recepción por M2. Están soportados STARTED, PROGRESS, INFORMATION_REQUIRED,
+RETURNED, RESOLVED y REJECTED. RESOLVED exige una intervención completada/validada.
+Datos inválidos devuelven 400 con message/code/details; estados incompatibles, 409.
 
-M1 y las ambigüedades UUID de M7 permanecen pendientes explícitos de la consigna.
-No se habilitarán aliases ni contratos provisionales por defecto.
+Ejemplo INFORMATION_REQUIRED:
+~~~json
+{
+  "updateType": "INFORMATION_REQUIRED",
+  "details": {
+    "informationRequest": {"messageForCitizen": "Indique la ubicación exacta."}
+  }
+}
+~~~
 
-## Implementación y verificaciones del punto de recuperación
+## M6: evaluación y órdenes
 
-- V5 agrega Inbox/Outbox JSONB. Recibir se confirma en una transacción separada;
-  procesar bloquea la fila y confirma conjuntamente efectos y resultado. Una
-  interrupción deja RECEIVED/ERROR recuperable. Errores no guardan payload ni
-  mensajes internos de excepciones en logs.
-- V6 agrega la proyección de tickets. ROUTED tardío hidrata sus datos base sin
-  regresar el estado más reciente. Se conserva información/escalamiento con
-  sus tiempos independientes; se marcan evaluación y planificación pendientes.
-  Todavía no se consume esa evaluación para crear/vincular una orden.
-- Outbox exige transacción de negocio, mantiene eventId, espera confirms/returns,
-  serializa publicación por orderingKey y usa bloqueo SKIP LOCKED. En PostgreSQL
-  un advisory lock también serializa asignación de secuencias hasta commit.
-- El listener usa ACK manual y NACK sin requeue. No declara topología. Los tipos
-  conocidos de M6/M7 todavía no implementados fallan explícitamente; no se ACKean
-  como trabajo realizado. M1 no tiene contrato habilitado.
-- Schema M2 se valida en Java desde copias exactas locales, con formatos activos.
-- Test completo H2 inicial: 73 aprobados. Verify PostgreSQL temporal: 74 aprobados
-  y JAR generado, incluyendo actualización desde V4 y base vacía. Verify H2 más
-  reciente: 77 aprobados, sin fallos ni errores, JAR generado. Las últimas tres
-  pruebas y ajustes de logs/serialización de append requieren repetir PostgreSQL.
-- Pruebas AMQP actuales usan dobles del cliente, no un broker real. Docker no
-  tenía motor activo. No se realizó prueba bilateral ni se obtuvo token de Core.
+Cada handler conserva su referencia: requestId, containerId o treeId. Un evento
+más antiguo no reemplaza la proyección reciente. requiresPublicWorks=false se
+ignora; un árbol sin suggestedIntervention queda en monitoreo, sin crear trabajo.
 
-## Continuación: identidades y ciclo de órdenes M2
+Nuevo origin REST/OpenAPI: AMBIENTE. La Strategy requiere sourceRequestId UUID de
+una gestión recibida y accionable. El operador indica el trabajo y su prioridad;
+una segunda orden para la misma gestión se rechaza. Contenedores/árboles consolidan
+la gestión por activo; el contrato no define todavía un identificador de incidencia
+distinto para múltiples intervenciones históricas sobre el mismo activo.
 
-V7 asigna UUID persistentes y únicos a usuarios y órdenes existentes y nuevos,
-sin cambiar los IDs numéricos de REST. La identidad de updatedBy se obtiene del
-usuario autenticado almacenado; los procesos sin persona se identifican SYSTEM.
-No se acepta una identidad enviada dentro del contenido a publicar.
+Solo infrastructureRepairRequested genera workOrderScheduled/workOrderCompleted.
+sourceRequestId conserva requestId y workOrderId usa el UUID persistido. Los campos
+visibles opcionales no se fabrican. Los schemas M3 Draft 2020-12 tienen
+additionalProperties=false y están en resources/contracts/m3.
+No se emiten consumedMaterials/attachments sin datos y contratos apropiados.
 
-La creación REST vincula una orden ATENCION_CIUDADANA cuyo sourceRequestId coincide
-con un ticket recibido. Se bloquea la proyección para impedir una segunda orden.
-Las referencias anteriores sin proyección mantienen su comportamiento. ROUTED
-abre la gestión; un operador decide crear la intervención mediante el POST ya
-existente, sin inventar una intervención desde categoría/subcategoría.
+M6_UUID_CONTRACT_CONFIRMED=false deshabilita esas salidas hasta confirmar UUID.
+El flag debe habilitarse antes del ciclo bilateral; no reconstruye retroactivamente
+salidas que se omitieron mientras el contrato estaba deshabilitado.
 
-Programar, iniciar y pausar generan PROGRESS; si corresponde se encola STARTED
-antes. Completar genera RESOLVED con ACTION_COMPLETED y un mensaje público fijo,
-sin publicar automáticamente el texto libre de outcome. Las salidas y el cambio
-de negocio se confirman juntos. M3 no cambia el estado autoritativo de M2.
-CANCELLED bloquea nuevas acciones, pero permite pausar/finalizar una intervención
-ya iniciada sin emitir una resolución incompatible con la cancelación. Un ROUTED
-atrasado tampoco reactiva evaluación de tickets resueltos/cerrados.
+## M7: cortes y accidentes
 
-Las mutaciones de órdenes toman bloqueo de escritura antes de validar estado,
-evitando dos transiciones simultáneas y eventos duplicados. Las lecturas siguen
-sin bloqueo. Las seis variantes de updateTicketStatus se validan con el schema
-original; INFORMATION_REQUIRED/RETURNED/REJECTED aún necesitan sus casos de uso
-operativos, no basta con el publicador y las pruebas de contrato.
+El endpoint anterior POST /api/public-works/street-closures sigue siendo local y
+acepta las fechas/tramos anteriores. No convierte datos viejos inventando horarios.
 
-Verificación de esta continuación: test H2 82 pruebas; verify PostgreSQL 83
-pruebas (incluye concurrencia agregada después), todas aprobadas y JAR generado.
-La migración se probó desde V6 con usuarios/órdenes existentes y desde base vacía.
+Nuevo endpoint de PERSONAL_OBRAS:
+POST /api/public-works/street-closures/integration
 
-Faltan decisiones operativas M2 mencionadas, ciclos M6/M7, evolución de cortes,
-cliente de autenticación Core, pruebas restantes y entrega final del PR.
-La prueba bilateral con Core compartido sigue pendiente y es condición para
-declarar completa la integración. No se hizo despliegue ni registro en Core.
+~~~json
+{
+  "workOrderId": 1,
+  "reason": "Reparación de calzada",
+  "affectedSections": [
+    {"street": "Av. Rivadavia", "from": "Av. La Plata", "to": "Muñiz", "direction": "BOTH"}
+  ],
+  "requestedFrom": "2026-10-21T08:00:00-03:00",
+  "requestedTo": "2026-10-21T18:00:00-03:00",
+  "closureType": "TOTAL"
+}
+~~~
+
+Para prórroga se agrega previousClosureRequestId. Se crean nuevos requestId y
+eventId, conservando la correlación. sourceRef se obtiene del UUID de la orden.
+El endpoint devuelve 409 mientras M7_UUID_CONTRACT_CONFIRMED=false.
+
+GET /api/public-works/street-closures/integration/{requestId} devuelve estado,
+solicitud, autorización y finalización; requiere autenticación. El listado anterior
+también refleja el estado de los cortes integrados.
+
+Estados: PENDING, APPROVED, REJECTED, ACTIVE, EXPIRED, ENDED. Se conservan tramos,
+desvíos, condiciones, rechazo y finalización. authorized endDate prevalece sobre
+requestedTo. Solo una ventana activa permite iniciar/reanudar la orden.
+Una prórroga pendiente no elimina una ventana anterior todavía vigente.
+Finalizar el corte no cancela automáticamente la orden.
+Se acepta causationId ausente/null de entrada. No se registra streetClousureEnded.
+
+roadAccidentRegistered se ignora sin daño; con daño exige damageDescription.
+Solo persiste datos necesarios para evaluar infraestructura: elimina personas,
+vehículos e inspector antes de Inbox. accidentId admite temporalmente una referencia
+de texto; M7_ACCIDENT_UUID_REQUIRED permite endurecer la validación cuando M7 lo
+confirme. No se usa DNI como correlación ni se persiste/loguea su campo.
+Los accidentes abren una proyección de evaluación; no se inventa una orden ni
+un contrato definitivo a partir de los identificadores todavía pendientes.
+
+## Migraciones nuevas
+
+| Versión | Cambio |
+| --- | --- |
+| V5 | Inbox/Outbox JSONB y secuencias |
+| V6 | Proyecciones M2 |
+| V7 Java | UUID persistentes para usuarios/órdenes, backfill compatible PostgreSQL/H2 |
+| V8 | Gestiones M6 y origen AMBIENTE |
+| V9 | Extensión de StreetClosure y proyección minimizada de accidentes |
+
+V1-V4 no se modifican. Flyway sigue siendo la única vía de schema;
+ddl-auto=validate. V9 conserva fechas antiguas sin asignarles offset artificial.
+Los datos estructurados de solicitud, autorización y finalización se conservan
+en JSONB, además de las columnas temporales/identificadores usadas para bloquear.
+
+## Configuración y observabilidad
+
+Variables sin secretos en .env.example/application.properties:
+MESSAGING_ENABLED, CORE_BASE_URL, CORE_MODULE_NAME, CORE_MACHINE_SECRET,
+RABBITMQ_HOST, RABBITMQ_PORT, RABBITMQ_USERNAME, RABBITMQ_PASSWORD, RABBITMQ_VHOST,
+RABBITMQ_TLS_ENABLED, CORE_EXCHANGE, CORE_QUEUE y flags de confirmación anteriores.
+
+MESSAGING_ENABLED=false no crea conexión/listener Rabbit. En pruebas aisladas,
+la conexión directa requiere además MESSAGING_PARTIAL_INTEGRATION_ACKNOWLEDGED=true
+y PostgreSQL. No declara exchange, cola ni bindings: Core administra muni.inbox/q.obras.
+Ese flag no afirma que esté resuelta la autenticación Core.
+
+Falta request/response de POST /api/v1/auth/module-token y cómo emplear su token
+con AMQP. No se inventaron campos, endpoints, transporte del token ni un cliente
+que simule obtenerlo. Su renovación RS256/900 segundos queda pendiente de ese contrato.
+
+Métricas Micrometer: obras.events por resultado y obras.outbox.backlog. Logs con
+eventId/eventType/correlationId/sourceModule/resultado. No se registran tokens,
+secretos, DNI ni payload completo. Los endpoints de métricas no se abren públicamente.
+
+## Validación y límites
+
+- ./mvnw.cmd test: todas las pruebas existentes conservadas y nuevas de eventos.
+- ./mvnw.cmd verify: 94 pruebas aprobadas, JAR generado.
+- Perfil postgres-test sobre una base local desechable: 94 aprobadas, JAR generado.
+- Upgrade desde V2/V4/V6 y creación desde base vacía, incluyendo usuarios/órdenes
+  anteriores y cortes de fechas simples. Repetir migraciones no cambia sus UUID.
+- Pruebas de deduplicación, rollback, recuperación, concurrencia, reintentos de
+  Outbox, schemas, NACK(false), seguridad HTTP y ciclos M2/M6/M7.
+- RabbitMQ probado con dobles del cliente. Docker no tenía motor activo; no hubo
+  broker real/Testcontainers ni prueba bilateral. Ninguna prueba usó Azure.
+- Los ajustes finales de correlación del cierre, validación HTTP y métricas
+  quedaron incluidos en ambas verificaciones finales: 94 pruebas en cada motor.
+
+## Para DevOps y Frontend
+
+DevOps: revisar V5-V9, proporcionar el contrato Core/token, confirmar UUID con M6/M7
+y el nombre streetClosureEnded; configurar variables como secretos del ambiente.
+Autorizar luego despliegue y prueba bilateral. Este PR no despliega ni registra
+contratos/topología en Core y no debe considerarse integración compartida completa.
+
+Frontend: los endpoints anteriores siguen disponibles. AMBIENTE es un origen nuevo;
+los endpoints adicionales de tickets/cortes figuran en OpenAPI. El corte integrado
+requiere fechas con offset y tramos estructurados. 202 en decisiones de tickets
+significa encolado. La UI debe seguir consumiendo rutas relativas /api/....
+No se modificó su repositorio.

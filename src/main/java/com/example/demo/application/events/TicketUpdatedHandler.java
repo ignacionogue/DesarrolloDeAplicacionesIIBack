@@ -34,6 +34,7 @@ public class TicketUpdatedHandler implements EventHandler {
         var information=p.information(); var informationAt=p.informationAt();
         var escalation=p.escalation(); var escalationAt=p.escalationAt();
         boolean planning=p.planningReviewRequired(),evaluation=p.evaluationRequired();
+        boolean started=p.started();
         // ROUTED can arrive after a newer delta: hydrate the base without rolling state back.
         if(type.equals("ROUTED") && newer(time,routingAt)) {
             routing=data.path("details").path("routing"); routingAt=time;
@@ -47,13 +48,13 @@ public class TicketUpdatedHandler implements EventHandler {
             escalation=data.path("details").path("escalation"); escalationAt=time;
         }
         if(latest && type.equals("PRIORITY_CHANGED")) planning=true;
-        if(latest && type.equals("REOPENED")) evaluation=true;
+        if(latest && type.equals("REOPENED")) { evaluation=true; started=false; }
         if(java.util.Set.of("CANCELLED", "RESOLVED", "CLOSED").contains(snapshot.path("currentStatus").asString())) {
             evaluation=false;
             planning=false;
         }
         store.save(new Projection(p.ticketId(),snapshot,latest?time:p.updatedAt(),routing,routingAt,information,informationAt,
-                escalation,escalationAt,p.correlationId(),p.orderId(),p.started(),planning,evaluation));
+                escalation,escalationAt,p.correlationId(),p.orderId(),started,planning,evaluation));
     }
     private boolean newer(OffsetDateTime time,OffsetDateTime previous) {return previous==null || time.toInstant().isAfter(previous.toInstant());}
 }

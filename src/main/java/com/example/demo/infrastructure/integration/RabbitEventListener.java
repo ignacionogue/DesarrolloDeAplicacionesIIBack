@@ -14,7 +14,7 @@ public class RabbitEventListener implements ChannelAwareMessageListener {
         try {
             dispatcher.dispatch(message.getBody());
         } catch (RuntimeException failure) {
-            metrics.result("error",null);
+            metrics.result("nacked",null);
             channel.basicNack(tag,false,false);
             return;
         }

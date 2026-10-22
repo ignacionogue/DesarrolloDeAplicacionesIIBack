@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "workOrderCompleted",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventId",
+    "eventType",
+    "eventVersion",
+    "occurredAt",
+    "sourceModule",
+    "correlationId",
+    "data"
+  ],
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "eventType": {
+      "const": "workOrderCompleted"
+    },
+    "eventVersion": {
+      "const": "1.0"
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sourceModule": {
+      "const": "obras"
+    },
+    "correlationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "causationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceRequestId",
+        "workOrderId"
+      ],
+      "properties": {
+        "sourceRequestId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "workOrderId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "workOrderNumber": {
+          "type": "string",
+          "minLength": 1
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "outcome": {
+          "type": "string"
+        },
+        "attachments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "fileName",
+              "contentType",
+              "url"
+            ],
+            "properties": {
+              "fileName": {
+                "type": "string",
+                "minLength": 1
+              },
+              "contentType": {
+                "type": "string",
+                "minLength": 1
+              },
+              "url": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sizeBytes": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "consumedMaterials": {
+          "type": "array",
+          "description": "Optional material entries are not emitted until their item contract is confirmed with M6."
+        }
+      }
+    }
+  }
+}

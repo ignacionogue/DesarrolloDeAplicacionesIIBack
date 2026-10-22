@@ -22,7 +22,7 @@ class MigrationTests {
             jdbc.update("INSERT INTO " + quotedSchema + ".orden_trabajo(origin, description, priority) VALUES ('MANUAL', 'Legacy manual', 'ALTA')");
             jdbc.update("INSERT INTO " + quotedSchema + ".orden_trabajo(origin, description, priority) VALUES ('INSPECCION', 'Legacy inspection', 'MEDIA')");
             var upgrade = Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema).load();
-            assertEquals(5, upgrade.migrate().migrationsExecuted);
+            assertEquals(7, upgrade.migrate().migrationsExecuted);
             assertEquals(2L, jdbc.queryForObject("SELECT COUNT(*) FROM " + quotedSchema + ".orden_trabajo WHERE project_id IS NULL", Long.class));
             assertEquals(1L, jdbc.queryForObject("SELECT COUNT(*) FROM " + quotedSchema + ".orden_trabajo WHERE origin='MANUAL' AND description='Legacy manual'", Long.class));
             jdbc.update("INSERT INTO " + quotedSchema + ".proyecto_obra(id,name,estimated_budget,estimated_start_date,estimated_duration_days) VALUES (100,'Project migration',1000,CURRENT_DATE,30)");
@@ -40,7 +40,7 @@ class MigrationTests {
     }
 
     @Test void latestMigrationIsAppliedAndPreservesData() {
-        assertEquals("7", flyway.info().current().getVersion().toString());
+        assertEquals("9", flyway.info().current().getVersion().toString());
         jdbc.update("INSERT INTO material(nombre, unidad) VALUES (?, ?)", "Migration preservation fixture", "kg");
         var count = jdbc.queryForObject("SELECT COUNT(*) FROM material", Long.class);
         flyway.validate();
@@ -54,9 +54,11 @@ class MigrationTests {
         try {
             Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema).target("4").load().migrate();
             jdbc.update("INSERT INTO "+quoted+".orden_trabajo(origin,description,priority) VALUES ('MANUAL','Pre integration','MEDIA')");
+            jdbc.update("INSERT INTO "+quoted+".street_closure(closure_request_id,work_order_id,location,requested_from,requested_to,reason,status) VALUES (?,(SELECT MIN(id) FROM "+quoted+".orden_trabajo),'Legacy street',CURRENT_DATE,CURRENT_DATE,'Legacy closure','PENDIENTE')",java.util.UUID.randomUUID().toString());
             var upgrade=Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema).load();
-            assertEquals(3,upgrade.migrate().migrationsExecuted);
+            assertEquals(5,upgrade.migrate().migrationsExecuted);
             assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM "+quoted+".orden_trabajo WHERE description='Pre integration'",Integer.class));
+            assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM "+quoted+".street_closure WHERE status='PENDIENTE' AND integration_status IS NULL AND requested_from_at IS NULL",Integer.class));
             for(String table:java.util.List.of("event_inbox","event_outbox","ticket_projection"))
                 assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM "+quoted+"."+table,Integer.class));
             assertEquals(0,upgrade.migrate().migrationsExecuted);
@@ -80,7 +82,7 @@ class MigrationTests {
                 jdbc.update("INSERT INTO " + quoted + ".orden_trabajo(origin,description,priority) VALUES ('MANUAL','Legacy','MEDIA')");
             }
             var upgrade = Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema).load();
-            assertEquals(1, upgrade.migrate().migrationsExecuted);
+            assertEquals(3, upgrade.migrate().migrationsExecuted);
             for (String table : java.util.List.of("app_user", "orden_trabajo")) {
                 var ids = jdbc.queryForList("SELECT integration_id FROM " + quoted + "." + table + " ORDER BY id", java.util.UUID.class);
                 assertEquals(2, new java.util.HashSet<>(ids).size());

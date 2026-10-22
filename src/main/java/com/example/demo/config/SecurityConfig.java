@@ -37,7 +37,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/public-works/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/public-works/projects", "/api/public-works/work-orders",
-                                "/api/public-works/crews", "/api/public-works/street-closures").hasRole("PERSONAL_OBRAS")
+                                "/api/public-works/crews", "/api/public-works/street-closures", "/api/public-works/street-closures/integration",
+                                "/api/public-works/tickets/{ticketId}/updates").hasRole("PERSONAL_OBRAS")
                         .requestMatchers(HttpMethod.PUT, "/api/public-works/projects/{id}",
                                 "/api/public-works/work-orders/{id}").hasRole("PERSONAL_OBRAS")
                         .requestMatchers(HttpMethod.PATCH, "/api/public-works/projects/{id}/submit-approval").hasRole("PERSONAL_OBRAS")

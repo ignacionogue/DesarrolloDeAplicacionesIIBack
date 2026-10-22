@@ -13,7 +13,16 @@ public class EventDispatcher {
         this.registry=registry; this.inbox=inbox; this.codec=codec; this.metrics=metrics; this.m2=m2;
     }
     public String dispatch(byte[] bytes) {
-        var event=codec.decode(bytes);
+        EventEnvelope event=null;
+        try {
+            event=codec.decode(bytes);
+            return dispatchDecoded(event);
+        } catch(RuntimeException failure) {
+            metrics.result("error",event);
+            throw failure;
+        }
+    }
+    private String dispatchDecoded(EventEnvelope event) {
         metrics.result("received",event);
         if (event.eventType().equals("ticketCreated")) {
             m2.validate(event); metrics.result("ignored",event); return "ignored";

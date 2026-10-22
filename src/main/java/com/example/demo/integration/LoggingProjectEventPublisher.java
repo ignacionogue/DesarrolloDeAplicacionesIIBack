@@ -20,6 +20,9 @@ public class LoggingProjectEventPublisher implements ProjectEventPublisher {
 
     @Override
     public void publishProjectApproved(Long projectId, String projectName) {
-        log.info("[EVENTO] publicWorksProjectApproved -> projectId={}, projectName='{}'", projectId, projectName);
+        log.info("M1 integration disabled eventType=publicWorksProjectApproved projectId={}", projectId);
+    }
+    @Override public void publishProjectCompleted(Long projectId) {
+        log.info("M1 integration disabled eventType=publicWorksProjectCompleted projectId={}", projectId);
     }
 }
