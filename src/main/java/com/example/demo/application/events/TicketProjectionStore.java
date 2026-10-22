@@ -10,5 +10,6 @@ public interface TicketProjectionStore {
             OffsetDateTime escalationAt,UUID correlationId,Long orderId,boolean started,
             boolean planningReviewRequired,boolean evaluationRequired) { }
     Projection lockOrCreate(EventEnvelope event);
+    java.util.Optional<Projection> lock(java.util.UUID ticketId);
     void save(Projection projection);
 }

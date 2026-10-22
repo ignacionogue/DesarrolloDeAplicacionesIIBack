@@ -108,8 +108,38 @@ No se habilitarán aliases ni contratos provisionales por defecto.
 - Pruebas AMQP actuales usan dobles del cliente, no un broker real. Docker no
   tenía motor activo. No se realizó prueba bilateral ni se obtuvo token de Core.
 
-Faltan salidas updateTicketStatus y UUID persistentes de personas/órdenes,
-vinculación de proyecciones a casos de uso, ciclos M6/M7, evolución de cortes,
+## Continuación: identidades y ciclo de órdenes M2
+
+V7 asigna UUID persistentes y únicos a usuarios y órdenes existentes y nuevos,
+sin cambiar los IDs numéricos de REST. La identidad de updatedBy se obtiene del
+usuario autenticado almacenado; los procesos sin persona se identifican SYSTEM.
+No se acepta una identidad enviada dentro del contenido a publicar.
+
+La creación REST vincula una orden ATENCION_CIUDADANA cuyo sourceRequestId coincide
+con un ticket recibido. Se bloquea la proyección para impedir una segunda orden.
+Las referencias anteriores sin proyección mantienen su comportamiento. ROUTED
+abre la gestión; un operador decide crear la intervención mediante el POST ya
+existente, sin inventar una intervención desde categoría/subcategoría.
+
+Programar, iniciar y pausar generan PROGRESS; si corresponde se encola STARTED
+antes. Completar genera RESOLVED con ACTION_COMPLETED y un mensaje público fijo,
+sin publicar automáticamente el texto libre de outcome. Las salidas y el cambio
+de negocio se confirman juntos. M3 no cambia el estado autoritativo de M2.
+CANCELLED bloquea nuevas acciones, pero permite pausar/finalizar una intervención
+ya iniciada sin emitir una resolución incompatible con la cancelación. Un ROUTED
+atrasado tampoco reactiva evaluación de tickets resueltos/cerrados.
+
+Las mutaciones de órdenes toman bloqueo de escritura antes de validar estado,
+evitando dos transiciones simultáneas y eventos duplicados. Las lecturas siguen
+sin bloqueo. Las seis variantes de updateTicketStatus se validan con el schema
+original; INFORMATION_REQUIRED/RETURNED/REJECTED aún necesitan sus casos de uso
+operativos, no basta con el publicador y las pruebas de contrato.
+
+Verificación de esta continuación: test H2 82 pruebas; verify PostgreSQL 83
+pruebas (incluye concurrencia agregada después), todas aprobadas y JAR generado.
+La migración se probó desde V6 con usuarios/órdenes existentes y desde base vacía.
+
+Faltan decisiones operativas M2 mencionadas, ciclos M6/M7, evolución de cortes,
 cliente de autenticación Core, pruebas restantes y entrega final del PR.
 La prueba bilateral con Core compartido sigue pendiente y es condición para
 declarar completa la integración. No se hizo despliegue ni registro en Core.

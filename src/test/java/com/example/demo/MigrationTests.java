@@ -22,7 +22,7 @@ class MigrationTests {
             jdbc.update("INSERT INTO " + quotedSchema + ".orden_trabajo(origin, description, priority) VALUES ('MANUAL', 'Legacy manual', 'ALTA')");
             jdbc.update("INSERT INTO " + quotedSchema + ".orden_trabajo(origin, description, priority) VALUES ('INSPECCION', 'Legacy inspection', 'MEDIA')");
             var upgrade = Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema).load();
-            assertEquals(4, upgrade.migrate().migrationsExecuted);
+            assertEquals(5, upgrade.migrate().migrationsExecuted);
             assertEquals(2L, jdbc.queryForObject("SELECT COUNT(*) FROM " + quotedSchema + ".orden_trabajo WHERE project_id IS NULL", Long.class));
             assertEquals(1L, jdbc.queryForObject("SELECT COUNT(*) FROM " + quotedSchema + ".orden_trabajo WHERE origin='MANUAL' AND description='Legacy manual'", Long.class));
             jdbc.update("INSERT INTO " + quotedSchema + ".proyecto_obra(id,name,estimated_budget,estimated_start_date,estimated_duration_days) VALUES (100,'Project migration',1000,CURRENT_DATE,30)");
@@ -40,7 +40,7 @@ class MigrationTests {
     }
 
     @Test void latestMigrationIsAppliedAndPreservesData() {
-        assertEquals("6", flyway.info().current().getVersion().toString());
+        assertEquals("7", flyway.info().current().getVersion().toString());
         jdbc.update("INSERT INTO material(nombre, unidad) VALUES (?, ?)", "Migration preservation fixture", "kg");
         var count = jdbc.queryForObject("SELECT COUNT(*) FROM material", Long.class);
         flyway.validate();
@@ -55,7 +55,7 @@ class MigrationTests {
             Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema).target("4").load().migrate();
             jdbc.update("INSERT INTO "+quoted+".orden_trabajo(origin,description,priority) VALUES ('MANUAL','Pre integration','MEDIA')");
             var upgrade=Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema).load();
-            assertEquals(2,upgrade.migrate().migrationsExecuted);
+            assertEquals(3,upgrade.migrate().migrationsExecuted);
             assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM "+quoted+".orden_trabajo WHERE description='Pre integration'",Integer.class));
             for(String table:java.util.List.of("event_inbox","event_outbox","ticket_projection"))
                 assertEquals(0,jdbc.queryForObject("SELECT COUNT(*) FROM "+quoted+"."+table,Integer.class));
@@ -68,5 +68,27 @@ class MigrationTests {
         assertThrows(DataIntegrityViolationException.class, () -> jdbc.update(
                 "INSERT INTO evidencia(orden_trabajo_id, storage_reference, fecha) VALUES (999999999, 'test', CURRENT_TIMESTAMP)"));
         assertThrows(DataIntegrityViolationException.class, () -> jdbc.update("INSERT INTO cuadrilla(nombre) VALUES (NULL)"));
+    }
+
+    @Test void assignsStableUniqueUuidsToExistingUsersAndOrders() {
+        String schema = "uuid_upgrade_" + java.util.UUID.randomUUID().toString().replace("-", "");
+        String quoted = "\"" + schema + "\"";
+        try {
+            Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema).target("6").load().migrate();
+            for (int i = 0; i < 2; i++) {
+                jdbc.update("INSERT INTO " + quoted + ".app_user(username,password_hash,role) VALUES (?,?,'PERSONAL_OBRAS')", "legacy" + i, "not-a-login-hash");
+                jdbc.update("INSERT INTO " + quoted + ".orden_trabajo(origin,description,priority) VALUES ('MANUAL','Legacy','MEDIA')");
+            }
+            var upgrade = Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema).load();
+            assertEquals(1, upgrade.migrate().migrationsExecuted);
+            for (String table : java.util.List.of("app_user", "orden_trabajo")) {
+                var ids = jdbc.queryForList("SELECT integration_id FROM " + quoted + "." + table + " ORDER BY id", java.util.UUID.class);
+                assertEquals(2, new java.util.HashSet<>(ids).size());
+                ids.forEach(id -> { assertEquals(4, id.version()); assertEquals(2, id.variant()); });
+                assertEquals(0, upgrade.migrate().migrationsExecuted);
+                assertEquals(ids, jdbc.queryForList("SELECT integration_id FROM " + quoted + "." + table + " ORDER BY id", java.util.UUID.class));
+                assertThrows(DataIntegrityViolationException.class, () -> jdbc.update("UPDATE " + quoted + "." + table + " SET integration_id=?", ids.get(0)));
+            }
+        } finally { jdbc.execute("DROP SCHEMA IF EXISTS " + quoted + " CASCADE"); }
     }
 }

@@ -28,6 +28,8 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import com.example.demo.application.events.WorkOrderEventHandler;
+import com.example.demo.application.events.WorkOrderEventHandler.Action;
 
 @Service
 public class OrdenTrabajoService {
@@ -38,17 +40,19 @@ public class OrdenTrabajoService {
     private final EvidenciaRepository evidenciaRepository;
     private final ObservacionRepository observacionRepository;
     private final WorkOrderCreationStrategyResolver creationStrategies;
+    private final List<WorkOrderEventHandler> eventHandlers;
 
     public OrdenTrabajoService(OrdenTrabajoRepository repository, OrdenTrabajoMapper mapper,
                                 CuadrillaRepository cuadrillaRepository, EvidenciaRepository evidenciaRepository,
                                 ObservacionRepository observacionRepository,
-                                WorkOrderCreationStrategyResolver creationStrategies) {
+                                WorkOrderCreationStrategyResolver creationStrategies, List<WorkOrderEventHandler> eventHandlers) {
         this.repository = repository;
         this.mapper = mapper;
         this.cuadrillaRepository = cuadrillaRepository;
         this.evidenciaRepository = evidenciaRepository;
         this.observacionRepository = observacionRepository;
         this.creationStrategies = creationStrategies;
+        this.eventHandlers = eventHandlers;
     }
 
     @Transactional(readOnly = true)
@@ -67,7 +71,8 @@ public class OrdenTrabajoService {
 
     @Transactional(readOnly = true)
     public OrdenTrabajoResponse obtenerPorId(Long id) {
-        OrdenTrabajo ot = buscarOrFallar(id);
+        OrdenTrabajo ot = repository.findById(id)
+                .orElseThrow(() -> new NotFoundException("No se encontro la orden de trabajo con id " + id));
         return mapper.toResponse(ot, evidenciaRepository.existsByOrdenTrabajoId(id));
     }
 
@@ -75,7 +80,9 @@ public class OrdenTrabajoService {
     public OrdenTrabajoResponse crear(OrdenTrabajoRequest request) {
         Cuadrilla cuadrilla = resolverCuadrilla(request.getCrew());
         OrdenTrabajo ot = creationStrategies.resolve(request.getOrigin()).create(request, cuadrilla);
+        eventHandlers.forEach(handler -> handler.before(ot, Action.CREATE));
         OrdenTrabajo guardada = repository.save(ot);
+        eventHandlers.forEach(handler -> handler.after(guardada, Action.CREATE));
         // Recien creada: no puede tener evidencia todavia.
         return mapper.toResponse(guardada, false);
     }
@@ -83,9 +90,11 @@ public class OrdenTrabajoService {
     @Transactional
     public OrdenTrabajoResponse actualizar(Long id, OrdenTrabajoRequest request) {
         OrdenTrabajo ot = buscarOrFallar(id);
+        eventHandlers.forEach(handler -> handler.before(ot, Action.EDIT));
         Cuadrilla cuadrilla = resolverCuadrilla(request.getCrew());
         // Revalidate origin/project on PUT without replacing identity or workflow state.
         var proposed = creationStrategies.resolve(request.getOrigin()).create(request, cuadrilla);
+        eventHandlers.forEach(handler -> handler.beforeEdit(ot, proposed));
         mapper.updateEntity(ot, proposed);
         OrdenTrabajo guardada = repository.save(ot);
         return mapper.toResponse(guardada, evidenciaRepository.existsByOrdenTrabajoId(id));
@@ -95,11 +104,13 @@ public class OrdenTrabajoService {
     public OrdenTrabajoResponse programar(Long id, ScheduleOTRequest request) {
         OrdenTrabajo ot = buscarOrFallar(id);
         validarTransicion(ot, "programar", EstadoOT.PENDIENTE, EstadoOT.PROGRAMADA, EstadoOT.ASIGNADA);
+        eventHandlers.forEach(handler -> handler.before(ot, Action.SCHEDULE));
         if (request.getCrew() != null && request.getCrew().isBlank()) {
             throw new com.example.demo.exception.InvalidRequestException("crew no puede estar vacio; omitalo para conservar la cuadrilla");
         }
         Cuadrilla cuadrilla = request.getCrew() == null ? ot.getCuadrilla() : resolverCuadrilla(request.getCrew());
         ot.programar(request.getScheduledDate(), cuadrilla);
+        eventHandlers.forEach(handler -> handler.after(ot, Action.SCHEDULE));
         return responderConEvidencia(repository.save(ot));
     }
 
@@ -107,7 +118,9 @@ public class OrdenTrabajoService {
     public OrdenTrabajoResponse iniciar(Long id) {
         OrdenTrabajo ot = buscarOrFallar(id);
         validarTransicion(ot, "iniciar", EstadoOT.PROGRAMADA, EstadoOT.ASIGNADA, EstadoOT.PAUSADA, EstadoOT.REABIERTA);
+        eventHandlers.forEach(handler -> handler.before(ot, Action.START));
         ot.iniciar();
+        eventHandlers.forEach(handler -> handler.after(ot, Action.START));
         return responderConEvidencia(repository.save(ot));
     }
 
@@ -115,7 +128,9 @@ public class OrdenTrabajoService {
     public OrdenTrabajoResponse pausar(Long id) {
         OrdenTrabajo ot = buscarOrFallar(id);
         validarTransicion(ot, "pausar", EstadoOT.EN_EJECUCION);
+        eventHandlers.forEach(handler -> handler.before(ot, Action.PAUSE));
         ot.pausar();
+        eventHandlers.forEach(handler -> handler.after(ot, Action.PAUSE));
         return responderConEvidencia(repository.save(ot));
     }
 
@@ -123,7 +138,9 @@ public class OrdenTrabajoService {
     public OrdenTrabajoResponse completar(Long id, CompleteOTRequest request) {
         OrdenTrabajo ot = buscarOrFallar(id);
         validarTransicion(ot, "completar", EstadoOT.EN_EJECUCION, EstadoOT.PAUSADA);
+        eventHandlers.forEach(handler -> handler.before(ot, Action.COMPLETE));
         ot.completar(request.getOutcome());
+        eventHandlers.forEach(handler -> handler.after(ot, Action.COMPLETE));
         return responderConEvidencia(repository.save(ot));
     }
 
@@ -131,6 +148,7 @@ public class OrdenTrabajoService {
     public OrdenTrabajoResponse validar(Long id, ValidateOTRequest request) {
         OrdenTrabajo ot = buscarOrFallar(id);
         validarTransicion(ot, "validar", EstadoOT.COMPLETADA);
+        eventHandlers.forEach(handler -> handler.before(ot, Action.VALIDATE));
         if (request.getObservations() != null && !request.getObservations().isBlank()) {
             observacionRepository.save(new Observacion(ot, request.getObservations()));
         }
@@ -159,7 +177,7 @@ public class OrdenTrabajoService {
     }
 
     private OrdenTrabajo buscarOrFallar(Long id) {
-        return repository.findById(id)
+        return repository.findLockedById(id)
                 .orElseThrow(() -> new NotFoundException("No se encontro la orden de trabajo con id " + id));
     }
 }

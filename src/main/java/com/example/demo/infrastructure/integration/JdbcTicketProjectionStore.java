@@ -24,11 +24,14 @@ public class JdbcTicketProjectionStore implements TicketProjectionStore {
                     id,jsonSql.parameter(event.data().toString()),OffsetDateTime.parse(event.data().path("updatedAt").asString()),
                     event.correlationId()==null?UUID.randomUUID():event.correlationId());
         }
-        return jdbc.queryForObject("SELECT * FROM ticket_projection WHERE ticket_id=? FOR UPDATE",(rs,n)->new Projection(
+        return lock(id).orElseThrow();
+    }
+    @Override public java.util.Optional<Projection> lock(UUID id) {
+        return jdbc.query("SELECT * FROM ticket_projection WHERE ticket_id=? FOR UPDATE",(rs,n)->new Projection(
                 id,read(rs.getObject("snapshot")),rs.getObject("updated_at",OffsetDateTime.class),read(rs.getObject("routing")),
                 rs.getObject("routing_at",OffsetDateTime.class),read(rs.getObject("information")),rs.getObject("information_at",OffsetDateTime.class),
                 read(rs.getObject("escalation")),rs.getObject("escalation_at",OffsetDateTime.class),rs.getObject("correlation_id",UUID.class),
-                rs.getObject("order_id",Long.class),rs.getBoolean("started"),rs.getBoolean("planning_review_required"),rs.getBoolean("evaluation_required")),id);
+                rs.getObject("order_id",Long.class),rs.getBoolean("started"),rs.getBoolean("planning_review_required"),rs.getBoolean("evaluation_required")),id).stream().findFirst();
     }
     @Override public void save(Projection p) {
         jdbc.update("""

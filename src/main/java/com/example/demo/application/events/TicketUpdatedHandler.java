@@ -48,7 +48,10 @@ public class TicketUpdatedHandler implements EventHandler {
         }
         if(latest && type.equals("PRIORITY_CHANGED")) planning=true;
         if(latest && type.equals("REOPENED")) evaluation=true;
-        if(snapshot.path("currentStatus").asString().equals("CANCELLED")) evaluation=false;
+        if(java.util.Set.of("CANCELLED", "RESOLVED", "CLOSED").contains(snapshot.path("currentStatus").asString())) {
+            evaluation=false;
+            planning=false;
+        }
         store.save(new Projection(p.ticketId(),snapshot,latest?time:p.updatedAt(),routing,routingAt,information,informationAt,
                 escalation,escalationAt,p.correlationId(),p.orderId(),p.started(),planning,evaluation));
     }

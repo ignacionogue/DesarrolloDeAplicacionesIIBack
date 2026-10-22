@@ -73,4 +73,13 @@ class TicketUpdatedHandlerTests {
         assertNotNull(jdbc.queryForObject("SELECT escalation FROM ticket_projection WHERE ticket_id=?",Object.class,ticket));
         assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM ticket_projection WHERE ticket_id=?",Integer.class,ticket));
     }
+
+    @Test void resolvedThenLateRoutingDoesNotReactivateEvaluation() throws Exception {
+        UUID ticket=UUID.randomUUID();
+        dispatch(fixture("ticketUpdated_RESOLVED",ticket,"2026-10-20T12:00:00Z"));
+        dispatch(fixture("ticketUpdated_ROUTED",ticket,"2026-10-20T10:00:00Z"));
+        assertEquals("RESOLVED",state(ticket));
+        assertFalse(jdbc.queryForObject("SELECT evaluation_required FROM ticket_projection WHERE ticket_id=?",Boolean.class,ticket));
+        assertFalse(jdbc.queryForObject("SELECT planning_review_required FROM ticket_projection WHERE ticket_id=?",Boolean.class,ticket));
+    }
 }
