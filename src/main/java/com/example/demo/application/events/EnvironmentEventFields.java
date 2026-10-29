@@ -20,5 +20,15 @@ final class EnvironmentEventFields {
         catch(java.time.DateTimeException ex) { throw new InvalidEventException(); }
     }
     static void bool(JsonNode data,String field) { if(!data.path(field).isBoolean()) throw new InvalidEventException(); }
-    static void location(JsonNode data) { if(!data.path("location").isObject() || data.path("location").isEmpty()) throw new InvalidEventException(); }
+    static void location(JsonNode data) {
+        var location=data.path("location");
+        if(!location.isObject()) throw new InvalidEventException();
+        var allowed=java.util.Set.of("street","number","neighborhoodId","lat","lng");
+        for(String name:location.propertyNames()) if(!allowed.contains(name)) throw new InvalidEventException();
+        for(String field:java.util.List.of("street","number"))
+            if(location.hasNonNull(field) && !location.path(field).isString()) throw new InvalidEventException();
+        if(location.hasNonNull("neighborhoodId")) uuid(location,"neighborhoodId");
+        for(String field:java.util.List.of("lat","lng"))
+            if(location.hasNonNull(field) && !location.path(field).isNumber()) throw new InvalidEventException();
+    }
 }

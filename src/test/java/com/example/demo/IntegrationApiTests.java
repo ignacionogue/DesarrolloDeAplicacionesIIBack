@@ -44,12 +44,12 @@ class IntegrationApiTests {
         assertEquals(202,post(path,"PERSONAL_OBRAS","{\"updateType\":\"RETURNED\",\"internalMessage\":\"Falta contexto\",\"details\":{\"returnInfo\":{\"reasonCode\":\"INSUFFICIENT_CONTEXT\"}}}").statusCode());
         assertEquals(202,post(path,"PERSONAL_OBRAS","{\"updateType\":\"REJECTED\",\"publicMessage\":\"Fuera del alcance de Obras\",\"details\":{\"cancellation\":{\"reasonCode\":\"OUT_OF_SCOPE\"}}}").statusCode());
     }
-    @Test void m7UuidProposalCannotBeEnabledAccidentallyAndDateOnlyInputIsRejected() throws Exception {
+    @Test void m7FinalContractRequiresClosureTypeAndOffsetTimestamps() throws Exception {
         var path="/api/public-works/street-closures/integration";
-        String body="{\"workOrderId\":1,\"reason\":\"Reparacion\",\"affectedSections\":[{\"street\":\"A\",\"from\":\"B\",\"to\":\"C\",\"direction\":\"BOTH\"}],\"requestedFrom\":\"2026-10-21T10:00:00-03:00\",\"requestedTo\":\"2026-10-21T11:00:00-03:00\"}";
+        String body="{\"workOrderId\":1,\"reason\":\"Reparacion\",\"affectedSections\":[{\"street\":\"A\",\"from\":\"B\",\"to\":\"C\",\"direction\":\"BOTH\"}],\"requestedFrom\":\"2026-10-21T10:00:00-03:00\",\"requestedTo\":\"2026-10-21T11:00:00-03:00\",\"closureType\":\"TOTAL\"}";
         assertEquals(403,post(path,"OPERARIO_CONTRATISTA",body).statusCode());
-        assertEquals(409,post(path,"PERSONAL_OBRAS",body).statusCode());
         assertEquals(400,post(path,"PERSONAL_OBRAS",body.replace("2026-10-21T10:00:00-03:00","2026-10-21")).statusCode());
+        assertEquals(400,post(path,"PERSONAL_OBRAS",body.replace(",\"closureType\":\"TOTAL\"","")).statusCode());
         var invalid=(ObjectNode)json.readTree(body); invalid.putArray("affectedSections").addNull();
         assertEquals(400,post(path,"PERSONAL_OBRAS",invalid.toString()).statusCode());
     }

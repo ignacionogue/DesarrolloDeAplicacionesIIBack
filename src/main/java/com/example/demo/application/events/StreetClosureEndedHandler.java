@@ -8,6 +8,10 @@ public class StreetClosureEndedHandler implements EventHandler {
     public String eventType() {return "streetClosureEnded";}
     public String sourceModule() {return "transito";}
     public boolean relevant(EventEnvelope e) {return true;}
-    public void validate(EventEnvelope e) {ClosureEventValidation.base(e);EnvironmentEventFields.uuid(e.data(),"streetClosureId");EnvironmentEventFields.time(e.data(),"completionDateTime");}
+    public void validate(EventEnvelope e) {
+        ClosureEventValidation.base(e);
+        if(e.correlationId()==null || e.causationId()!=null) throw new InvalidEventException();
+        EnvironmentEventFields.uuid(e.data(),"streetClosureId");EnvironmentEventFields.time(e.data(),"completionDateTime");
+    }
     public void handle(EventEnvelope e) {processor.apply(e);}
 }

@@ -10,7 +10,7 @@ public class StreetClosureApprovedHandler implements EventHandler {
     public String sourceModule() {return "transito";}
     public boolean relevant(EventEnvelope e) {return ClosureEventValidation.relevant(e);}
     public void validate(EventEnvelope e) {
-        ClosureEventValidation.base(e); var d=e.data(); EnvironmentEventFields.uuid(d,"streetClosureId");
+        ClosureEventValidation.responseToRequest(e); var d=e.data(); EnvironmentEventFields.uuid(d,"streetClosureId");
         EnvironmentEventFields.text(d,"requestingModule"); EnvironmentEventFields.time(d,"startDate"); EnvironmentEventFields.time(d,"endDate");
         if(!OffsetDateTime.parse(d.path("endDate").asString()).isAfter(OffsetDateTime.parse(d.path("startDate").asString()))) throw new InvalidEventException();
         ClosureEventValidation.sections(d.path("affectedSections"));

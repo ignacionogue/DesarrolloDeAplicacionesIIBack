@@ -10,7 +10,7 @@ public record IntegratedClosureRequest(@NotNull @Positive Long workOrderId,
         @NotBlank @Size(max=1000) String reason,
         @NotEmpty @Size(max=50) List<@NotNull @Valid Section> affectedSections,
         @NotNull OffsetDateTime requestedFrom, @NotNull OffsetDateTime requestedTo,
-        @Size(max=60) String closureType, UUID previousClosureRequestId) {
+        @NotBlank @Size(max=60) String closureType, UUID previousClosureRequestId) {
     public record Section(@NotBlank @Size(max=300) String street,@NotBlank @Size(max=300) String from,
             @NotBlank @Size(max=300) String to,@NotNull Direction direction) { }
     public enum Direction { FORWARD, REVERSE, BOTH }

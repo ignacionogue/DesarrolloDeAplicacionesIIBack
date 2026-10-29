@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uade.m3.obras/eventos/workOrderCompleted.data.schema.json",
+  "title": "workOrderCompleted data",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["sourceRequestId", "workOrderId"],
+  "properties": {
+    "sourceRequestId": {"type": "string", "format": "uuid"},
+    "workOrderId": {"type": "string", "format": "uuid"},
+    "workOrderNumber": {"type": "string", "minLength": 1},
+    "completedAt": {"type": "string", "format": "date-time"},
+    "outcome": {"type": "string"},
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["fileName", "contentType", "url"],
+        "properties": {
+          "fileName": {"type": "string", "minLength": 1},
+          "contentType": {"type": "string", "minLength": 1},
+          "url": {"type": "string", "format": "uri"},
+          "sizeBytes": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "consumedMaterials": {
+      "type": "array",
+      "description": "Reservado: M3 no lo emite hasta acordar el item con M6."
+    }
+  }
+}

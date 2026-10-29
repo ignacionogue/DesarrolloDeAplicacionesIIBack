@@ -11,14 +11,16 @@ public class RabbitEventTransport implements EventTransport {
     private final RabbitTemplate template;
     private final EventSerialization codec;
     private final String exchange;
-    public RabbitEventTransport(RabbitTemplate template, EventSerialization codec, String exchange) {
-        this.template=template; this.codec=codec; this.exchange=exchange;
+    private final String userId;
+    public RabbitEventTransport(RabbitTemplate template, EventSerialization codec, String exchange, String userId) {
+        this.template=template; this.codec=codec; this.exchange=exchange; this.userId=userId;
     }
     @Override public void publish(EventEnvelope event) {
         var properties=new MessageProperties();
         properties.setContentType("application/json");
         properties.setDeliveryMode(MessageDeliveryMode.PERSISTENT);
         properties.setMessageId(event.eventId().toString());
+        properties.setUserId(userId);
         var confirmation=new CorrelationData(event.eventId().toString());
         try {
             template.send(exchange,"",new Message(codec.encode(event).getBytes(StandardCharsets.UTF_8),properties),confirmation);

@@ -3,6 +3,7 @@ package com.example.demo;
 import com.example.demo.application.events.*;
 import com.example.demo.infrastructure.integration.*;
 import com.rabbitmq.client.Channel;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -27,6 +28,11 @@ class EventIntegrationFoundationTests {
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager transactions;
     @Autowired org.springframework.context.ApplicationContext context;
+
+    @BeforeEach void isolateOutbox() {
+        // publishOne selects globally; keep this suite independent from rows produced by other integration tests.
+        jdbc.update("DELETE FROM event_outbox");
+    }
 
     @Test void messagingDisabledDoesNotCreateBrokerConnectionsOrDeclareTopology() {
         assertTrue(context.getBeansOfType(org.springframework.amqp.rabbit.connection.ConnectionFactory.class).isEmpty());

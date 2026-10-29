@@ -13,7 +13,7 @@ import java.util.*;
 import java.nio.charset.StandardCharsets;
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest(properties="app.messaging.m6-uuid-contract-confirmed=true")
+@SpringBootTest
 class EnvironmentEventsTests {
     @Autowired EventDispatcher dispatcher;
     @Autowired ObjectMapper json;
@@ -26,15 +26,19 @@ class EnvironmentEventsTests {
         UUID id=UUID.randomUUID(); sources.add(id);
         var e=json.createObjectNode(); e.put("eventId",UUID.randomUUID().toString()).put("eventType",type).put("eventVersion","1.0")
             .put("occurredAt","2026-10-21T10:00:00Z").put("sourceModule","ambiente").put("correlationId",UUID.randomUUID().toString());
-        var d=e.putObject("data"); d.putObject("location").put("street","Calle de prueba 100");
+        var d=e.putObject("data"); d.putObject("location").put("street","Calle de prueba 100")
+            .put("neighborhoodId",UUID.randomUUID().toString());
         if(type.equals("infrastructureRepairRequested")) {
             d.put("requestId",id.toString()).put("damageType","BLOCKED_DRAIN").put("severity","HIGH")
                 .put("detectedIn",UUID.randomUUID().toString()).put("publicSafetyRisk",true).put("requestedAt","2026-10-21T10:00:00Z");
         } else if(type.equals("containerDamaged")) {
-            d.put("containerId",id.toString()).put("damageType","STRUCTURAL").put("severity","HIGH")
+            d.put("containerId",id.toString()).put("containerCode","CNT-0042").put("zoneId",UUID.randomUUID().toString())
+                .put("damageType","STRUCTURAL").put("severity","HIGH")
                 .put("requiresPublicWorks",true).put("detectedAt","2026-10-21T10:00:00Z");
         } else {
-            d.put("treeId",id.toString()).put("riskLevel","HIGH").put("requiresPublicWorks",true).put("surveyedAt","2026-10-21T10:00:00Z");
+            d.put("treeId",id.toString()).put("surveyCode","SRV-2026-0107").put("zoneId",UUID.randomUUID().toString())
+                .put("riskLevel","HIGH").put("riskType","ROOT_UPLIFT").put("healthStatus","WEAKENED")
+                .put("requiresStreetClosure",false).put("requiresPublicWorks",true).put("surveyedAt","2026-10-21T10:00:00Z");
         }
         return e;
     }

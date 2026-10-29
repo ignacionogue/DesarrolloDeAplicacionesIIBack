@@ -11,7 +11,8 @@ public class InfrastructureRepairRequestedHandler implements EventHandler {
     public boolean relevant(EventEnvelope event) { return true; }
     public void validate(EventEnvelope event) {
         var d=event.data(); EnvironmentEventFields.uuid(d,"requestId");
-        for(String field:java.util.List.of("damageType","severity","detectedIn")) EnvironmentEventFields.text(d,field);
+        for(String field:java.util.List.of("damageType","severity")) EnvironmentEventFields.text(d,field);
+        EnvironmentEventFields.uuid(d,"detectedIn");
         EnvironmentEventFields.location(d); EnvironmentEventFields.bool(d,"publicSafetyRisk");
         EnvironmentEventFields.time(d,"requestedAt");
         if(d.hasNonNull("ticketId")) EnvironmentEventFields.uuid(d,"ticketId");

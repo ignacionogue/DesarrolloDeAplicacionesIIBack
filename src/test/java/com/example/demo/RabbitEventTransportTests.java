@@ -19,9 +19,10 @@ class RabbitEventTransportTests {
             assertEquals(MessageDeliveryMode.PERSISTENT,message.getMessageProperties().getDeliveryMode());
             assertEquals("application/json",message.getMessageProperties().getContentType());
             assertEquals(event.eventId().toString(),message.getMessageProperties().getMessageId());
+            assertEquals("module_obras",message.getMessageProperties().getUserId());
             correlation.getFuture().complete(new CorrelationData.Confirm(true,null));return null;
         }).when(template).send(eq("muni.inbox"),eq(""),any(Message.class),any(CorrelationData.class));
-        new RabbitEventTransport(template,codec,"muni.inbox").publish(event);
+        new RabbitEventTransport(template,codec,"muni.inbox","module_obras").publish(event);
         verify(template).send(eq("muni.inbox"),eq(""),any(Message.class),any(CorrelationData.class));
     }
     @Test void brokerNackDoesNotCountAsPublicationAndDoesNotLeakBrokerMessage() {
@@ -30,7 +31,7 @@ class RabbitEventTransportTests {
         doAnswer(call->{((CorrelationData)call.getArgument(3)).getFuture().complete(new CorrelationData.Confirm(false,"private broker info"));return null;})
                 .when(template).send(anyString(),anyString(),any(Message.class),any(CorrelationData.class));
         var event=EventEnvelope.outgoing("testEvent",JsonMapper.builder().build().createObjectNode(),null,null);
-        var error=assertThrows(IllegalStateException.class,()->new RabbitEventTransport(template,codec,"muni.inbox").publish(event));
+        var error=assertThrows(IllegalStateException.class,()->new RabbitEventTransport(template,codec,"muni.inbox","module_obras").publish(event));
         assertEquals("PUBLICATION_NOT_CONFIRMED",error.getMessage());assertNull(error.getCause());
     }
     @Test void mandatoryReturnFailsEvenWhenBrokerConfirms() {
@@ -42,7 +43,7 @@ class RabbitEventTransportTests {
             correlation.getFuture().complete(new CorrelationData.Confirm(true,null)); return null;
         }).when(template).send(anyString(),anyString(),any(Message.class),any(CorrelationData.class));
         var event=EventEnvelope.outgoing("testEvent",JsonMapper.builder().build().createObjectNode(),null,null);
-        var error=assertThrows(IllegalStateException.class,()->new RabbitEventTransport(template,codec,"muni.inbox").publish(event));
+        var error=assertThrows(IllegalStateException.class,()->new RabbitEventTransport(template,codec,"muni.inbox","module_obras").publish(event));
         assertEquals("PUBLICATION_NOT_CONFIRMED",error.getMessage()); assertNull(error.getCause());
     }
 }

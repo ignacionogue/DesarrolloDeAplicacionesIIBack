@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://uade.m3.obras/eventos/workOrderScheduled.data.schema.json",
+  "title": "workOrderScheduled data",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["sourceRequestId", "workOrderId"],
+  "properties": {
+    "sourceRequestId": {"type": "string", "format": "uuid"},
+    "workOrderId": {"type": "string", "format": "uuid"},
+    "workOrderNumber": {"type": "string", "minLength": 1},
+    "estimatedDuration": {"type": "string", "format": "duration"}
+  }
+}

@@ -17,7 +17,7 @@ import java.time.*;
 import java.nio.charset.StandardCharsets;
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest(properties="app.messaging.m7-uuid-contract-confirmed=true")
+@SpringBootTest
 @ExtendWith(OutputCaptureExtension.class)
 class TrafficEventsTests {
     @Autowired ClosureIntegrationService closures;
@@ -41,6 +41,8 @@ class TrafficEventsTests {
     ObjectNode event(String type,ClosureIntegrationStore.Closure closure,OffsetDateTime from,OffsetDateTime to) {
         var event=json.createObjectNode(); event.put("eventId",UUID.randomUUID().toString()).put("eventType",type).put("eventVersion","1.0")
             .put("occurredAt",OffsetDateTime.now(ZoneOffset.UTC).toString()).put("sourceModule","transito").put("correlationId",closure.correlationId().toString());
+        if(type.equals("streetClosureApproved") || type.equals("streetClosureRejected"))
+            event.put("causationId",closure.requestEventId().toString());
         var data=event.putObject("data"); data.put("closureRequestId",closure.requestId().toString());
         if(type.equals("streetClosureApproved")) {
             data.put("streetClosureId",UUID.randomUUID().toString()).put("requestingModule","obras")
@@ -97,9 +99,10 @@ class TrafficEventsTests {
     @Test void accidentMinimizesNationalIdentifiersBeforeInboxAndDoesNotLogThem(CapturedOutput output) {
         var e=json.createObjectNode(); UUID id=UUID.randomUUID();
         e.put("eventId",id.toString()).put("eventType","roadAccidentRegistered").put("eventVersion","1.0")
-            .put("occurredAt",OffsetDateTime.now(ZoneOffset.UTC).toString()).put("sourceModule","transito");
-        var d=e.putObject("data"); d.put("accidentId","ACC-"+UUID.randomUUID()).put("accidentDateTime",OffsetDateTime.now(ZoneOffset.UTC).toString())
-            .put("involvesInfrastructureDamage",true).put("damageDescription","Semaforo danado").put("inspectorId","INS-124");
+            .put("occurredAt",OffsetDateTime.now(ZoneOffset.UTC).toString()).put("sourceModule","transito")
+            .put("correlationId",UUID.randomUUID().toString());
+        var d=e.putObject("data"); d.put("accidentId",UUID.randomUUID().toString()).put("accidentDateTime",OffsetDateTime.now(ZoneOffset.UTC).toString())
+            .put("involvesInfrastructureDamage",true).put("damageDescription","Semaforo danado").put("inspectorId",UUID.randomUUID().toString());
         d.putObject("location").put("street","Calle A"); d.putArray("vehicles").addObject().put("ownerNationalId","38765432");
         d.putArray("persons").addObject().put("nationalId","38765432");
         assertEquals("processed",dispatch(e));

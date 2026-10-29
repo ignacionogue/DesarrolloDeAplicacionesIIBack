@@ -12,8 +12,8 @@ faltan credenciales AMQPS, habilitación de IP de salida y la prueba bilateral r
 | Transporte | Listener manual, NACK sin requeue, JSON persistente, confirms/returns, sin declarar topología | RabbitMQ 4.3/Core compartido |
 | Persistencia | Inbox/Outbox, recuperación, deduplicación, bloqueo concurrente y orden de publicación por gestión | Operación y monitoreo del ambiente |
 | M2 | ticketUpdated, gestión única, actualización por updatedAt, seis variantes de salida y vínculo a órdenes | Prueba bilateral v1.78 |
-| M6 | Tres handlers, monitoreo de árboles, Strategy AMBIENTE, Scheduled/Completed para solicitudes de reparación | Confirmar UUID de workOrderId; detalle de consumedMaterials no inventado |
-| M7 | Solicitud/prórroga, aprobación/rechazo/finalización, ventanas autorizadas, proyección minimizada de accidentes | Confirmar sourceRef/accidentId/inspectorId; corregir nombre histórico en Core |
+| M6 | Tres handlers, `neighborhoodId` UUID opcional, Strategy AMBIENTE y schemas data/full de Scheduled/Completed | Prueba bilateral requestId → sourceRequestId; detalle de consumedMaterials no inventado |
+| M7 | Contrato v1.0 aceptado: solicitud/prórroga, UUID, correlación/causalidad, ventanas y accidentes minimizados | Migración coordinada del typo en Core y prueba E2E |
 | M1 | Puerto existente ampliado para aprobación/finalización y puerto de resolución deshabilitado | Casing, envelope, payload y resultados de resolución |
 | Core HTTP | Variables externas declaradas | Cliente pendiente del contrato completo de respuesta/errores; no interviene en AMQPS |
 
@@ -110,13 +110,16 @@ distinto para múltiples intervenciones históricas sobre el mismo activo.
 
 Solo infrastructureRepairRequested genera workOrderScheduled/workOrderCompleted.
 sourceRequestId conserva requestId y workOrderId usa el UUID persistido. Los campos
-visibles opcionales no se fabrican. Los schemas M3 Draft 2020-12 tienen
+visibles opcionales no se fabrican. Los schemas M3 Draft 2020-12 completos y los
+schemas exclusivos de `data` para registrar en Core tienen
 additionalProperties=false y están en resources/contracts/m3.
 No se emiten consumedMaterials/attachments sin datos y contratos apropiados.
 
-M6_UUID_CONTRACT_CONFIRMED=false deshabilita esas salidas hasta confirmar UUID.
-El flag debe habilitarse antes del ciclo bilateral; no reconstruye retroactivamente
-salidas que se omitieron mientras el contrato estaba deshabilitado.
+M6 aceptó `workOrderId` UUID, `workOrderNumber` humano opcional y
+`sourceRequestId` UUID. Las salidas quedan activas en la lógica de negocio y se
+acumulan en Outbox; la conexión al broker sigue gobernada por MESSAGING_ENABLED.
+`location.neighborhoodId` se acepta como UUID opcional, ausente cuando M6 no puede
+resolver un único barrio desde el catálogo de M9.
 
 ## M7: cortes y accidentes
 
@@ -141,7 +144,7 @@ POST /api/public-works/street-closures/integration
 
 Para prórroga se agrega previousClosureRequestId. Se crean nuevos requestId y
 eventId, conservando la correlación. sourceRef se obtiene del UUID de la orden.
-El endpoint devuelve 409 mientras M7_UUID_CONTRACT_CONFIRMED=false.
+`closureType` es obligatorio y `data.sourceModule` vale `obras`.
 
 GET /api/public-works/street-closures/integration/{requestId} devuelve estado,
 solicitud, autorización y finalización; requiere autenticación. El listado anterior
@@ -151,14 +154,15 @@ Estados: PENDING, APPROVED, REJECTED, ACTIVE, EXPIRED, ENDED. Se conservan tramo
 desvíos, condiciones, rechazo y finalización. authorized endDate prevalece sobre
 requestedTo. Solo una ventana activa permite iniciar/reanudar la orden.
 Una prórroga pendiente no elimina una ventana anterior todavía vigente.
-Finalizar el corte no cancela automáticamente la orden.
-Se acepta causationId ausente/null de entrada. No se registra streetClousureEnded.
+Finalizar el corte no cancela automáticamente la orden. Aprobación y rechazo deben
+heredar `correlationId` y usar el `eventId` de la solicitud como `causationId`.
+Finalización conserva la correlación y omite `causationId`. No se registra ni consume
+`streetClousureEnded`.
 
 roadAccidentRegistered se ignora sin daño; con daño exige damageDescription.
 Solo persiste datos necesarios para evaluar infraestructura: elimina personas,
-vehículos e inspector antes de Inbox. accidentId admite temporalmente una referencia
-de texto; M7_ACCIDENT_UUID_REQUIRED permite endurecer la validación cuando M7 lo
-confirme. No se usa DNI como correlación ni se persiste/loguea su campo.
+vehículos e inspector antes de Inbox. `accidentId` e `inspectorId`, cuando viene,
+se validan como UUID. No se usa DNI como correlación ni se persiste/loguea su campo.
 Los accidentes abren una proyección de evaluación; no se inventa una orden ni
 un contrato definitivo a partir de los identificadores todavía pendientes.
 
@@ -212,6 +216,12 @@ entre diez suscripciones registradas y las nueve esperadas, sin modificar alias
 ni suscripciones automáticamente. Un publisher confirm acredita recepción por
 RabbitMQ, no procesamiento de negocio. Conservar eventId en retransmisiones.
 No se intentó ninguna conexión ni publicación al ambiente compartido.
+Core corrigió el 28/10 la política real: con maxAttempts=4 hay una entrega original
+y tres reintentos después de 5 s, 30 s y 2 min; la ventana es 2 min 35 s. El escalón
+de 10 min sólo se usa con maxAttempts>=5. La fuente de verdad operativa es
+GET /api/v1/topology. La DLQ es única y la opera Core, no existe una DLQ por módulo.
+El publicador envía `user_id=module_obras`; RabbitMQ lo valida cuando está presente,
+pero Core todavía no obliga el header ni lo contrasta con `sourceModule`.
 Métricas Micrometer: obras.events por resultado y obras.outbox.backlog. Logs con
 eventId/eventType/correlationId/sourceModule/resultado. No se registran tokens,
 secretos, DNI ni payload completo. Los endpoints de métricas no se abren públicamente.
@@ -236,9 +246,9 @@ secretos, DNI ni payload completo. Los endpoints de métricas no se abren públi
 
 ## Para DevOps y Frontend
 
-DevOps: revisar V5-V9, obtener contraseña AMQPS y habilitar la IP pública de salida;
-proporcionar contrato completo HTTP/token, confirmar UUID con M6/M7
-y el nombre streetClosureEnded; configurar variables como secretos del ambiente.
+DevOps: revisar V5-V9, obtener contraseña AMQPS y confirmar que la IP pública de
+salida de M3 esté permitida; proporcionar contrato completo HTTP/token, registrar
+los schemas data-only y configurar secretos del ambiente.
 Autorizar luego despliegue y prueba bilateral. Este PR no despliega ni registra
 contratos/topología en Core y no debe considerarse integración compartida completa.
 
