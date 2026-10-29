@@ -30,6 +30,12 @@ public class StreetClosure {
     private String reason;
     @Column(nullable = false)
     private String status = "PENDIENTE";
+    @Column(insertable=false,updatable=false)
+    private String integrationStatus;
+    @Column(insertable=false,updatable=false)
+    private java.time.OffsetDateTime authorizedStart;
+    @Column(insertable=false,updatable=false)
+    private java.time.OffsetDateTime authorizedEnd;
 
     protected StreetClosure() {}
     public StreetClosure(OrdenTrabajo order, String location, List<String> sections,
@@ -50,5 +56,13 @@ public class StreetClosure {
     public LocalDate getRequestedFrom() { return requestedFrom; }
     public LocalDate getRequestedTo() { return requestedTo; }
     public String getReason() { return reason; }
-    public String getStatus() { return status; }
+    public String getStatus() {
+        if(integrationStatus==null) return status;
+        if(java.util.Set.of("APPROVED","ACTIVE","EXPIRED").contains(integrationStatus)) {
+            var now=java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC);
+            if(!now.isBefore(authorizedEnd)) return "EXPIRED";
+            return now.isBefore(authorizedStart)?"APPROVED":"ACTIVE";
+        }
+        return integrationStatus;
+    }
 }

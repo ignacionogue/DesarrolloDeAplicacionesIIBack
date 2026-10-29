@@ -1,0 +1,33 @@
+{
+  "eventId": "a3f0c9d1-2b7e-4e65-b1c4-77d8e9f0a1b2",
+  "eventType": "updateTicketStatus",
+  "eventVersion": "1.0",
+  "occurredAt": "2026-08-20T11:45:00-03:00",
+  "sourceModule": "obras",
+  "correlationId": "c1a2b3d4-1111-4aaa-8bbb-000000000002",
+  "causationId": "ec2f9624-fad5-4e36-b0a4-9163382e8df5",
+  "data": {
+    "ticketId": "550e8400-e29b-41d4-a716-446655440000",
+    "updateType": "RESOLVED",
+    "publicMessage": "La luminaria fue reparada y quedó operativa.",
+    "internalMessage": "Se reemplazó artefacto LED y se verificó consumo normal.",
+    "details": {
+      "resolution": {
+        "type": "ACTION_COMPLETED"
+      }
+    },
+    "attachments": [
+      {
+        "fileName": "reparacion.jpg",
+        "contentType": "image/jpeg",
+        "url": "...",
+        "sizeBytes": 245100
+      }
+    ],
+    "updatedBy": {
+      "type": "EXTERNAL_USER",
+      "id": "3b9f1c52-6a7e-4d08-9c41-5e2a8d7f0b13"
+    },
+    "updateOccurredAt": "2026-08-20T11:45:00-03:00"
+  }
+}

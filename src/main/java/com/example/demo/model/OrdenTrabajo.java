@@ -34,6 +34,10 @@ public class OrdenTrabajo {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Column(nullable = false, unique = true, updatable = false)
+    private java.util.UUID integrationId = java.util.UUID.randomUUID();
+
+    public java.util.UUID getIntegrationId() { return integrationId; }
 
     /** Referencia externa (ej. ticket de Atencion Ciudadana). Puede no existir si el origen es MANUAL. */
     @Column(length = 100)

@@ -19,7 +19,7 @@ public class OrdenTrabajoRequest {
     private String sourceRequestId;
 
     @NotBlank(message = "El origen es obligatorio")
-    @Schema(allowableValues = {"MANUAL", "PROYECTO", "ATENCION_CIUDADANA", "INSPECCION"})
+    @Schema(allowableValues = {"MANUAL", "PROYECTO", "ATENCION_CIUDADANA", "INSPECCION", "AMBIENTE"})
     private String origin;
 
     @NotBlank(message = "La descripcion es obligatoria")
