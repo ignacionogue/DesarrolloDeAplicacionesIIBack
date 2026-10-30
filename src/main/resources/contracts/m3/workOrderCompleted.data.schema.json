@@ -20,7 +20,7 @@
         "properties": {
           "fileName": {"type": "string", "minLength": 1},
           "contentType": {"type": "string", "minLength": 1},
-          "url": {"type": "string", "format": "uri"},
+          "url": {"type": "string", "minLength": 1, "format": "uri"},
           "sizeBytes": {"type": "integer", "minimum": 0}
         }
       }

@@ -96,6 +96,12 @@ class EnvironmentEventsTests {
         assertThrows(InvalidEventException.class,()->schemas.validate(EventEnvelope.outgoing("workOrderCompleted",data,null,null)));
         data.remove("evidence"); data.putArray("attachments").addObject().put("attachmentId","obsolete");
         assertThrows(InvalidEventException.class,()->schemas.validate(EventEnvelope.outgoing("workOrderCompleted",data,null,null)));
+        data.remove("attachments");
+        data.putArray("attachments").addObject()
+                .put("fileName","evidencia.jpg")
+                .put("contentType","image/jpeg")
+                .put("url","");
+        assertThrows(InvalidEventException.class,()->schemas.validate(EventEnvelope.outgoing("workOrderCompleted",data,null,null)));
         data.remove("attachments"); data.put("workOrderId","OT-2026-0098");
         assertThrows(InvalidEventException.class,()->schemas.validate(EventEnvelope.outgoing("workOrderScheduled",data,null,null)));
     }
