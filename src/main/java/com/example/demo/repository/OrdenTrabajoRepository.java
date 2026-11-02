@@ -9,4 +9,7 @@ public interface OrdenTrabajoRepository extends JpaRepository<OrdenTrabajo, Long
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @org.springframework.data.jpa.repository.Query("select o from OrdenTrabajo o where o.id = :id")
     java.util.Optional<OrdenTrabajo> findLockedById(@org.springframework.data.repository.query.Param("id") Long id);
+
+    boolean existsByProjectId(Long projectId);
+    boolean existsByProjectIdAndStatusNot(Long projectId, com.example.demo.model.EstadoOT status);
 }

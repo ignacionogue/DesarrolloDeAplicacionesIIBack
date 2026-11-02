@@ -65,4 +65,10 @@ public class ProyectoObraController {
     public ResponseEntity<ProyectoObraResponse> rechazar(@PathVariable Long id) {
         return ResponseEntity.ok(service.rechazar(id));
     }
+
+    @PatchMapping("/{id}/complete")
+    @Operation(summary = "Finaliza una obra al 100% con todas sus ordenes validadas")
+    public ResponseEntity<ProyectoObraResponse> finalizar(@PathVariable Long id) {
+        return ResponseEntity.ok(service.finalizar(id));
+    }
 }

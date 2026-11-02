@@ -1,6 +1,6 @@
-# Contrato de eventos M3 Obras Públicas v0.6
+# Contrato de eventos M3 Obras Públicas v0.7
 
-**Fecha:** 20 de octubre de 2026, revisión M2 v1.78
+**Fecha:** 1 de noviembre de 2026, revisión M2 v1.78
 
 **Estado:** revisión bilateral
 
@@ -8,7 +8,7 @@
 
 **Propietario:** M3 Obras Públicas, Infraestructura y Mantenimiento Urbano
 
-Este documento es la versión vigente de M3 para revisión con M1, M2, M6, M7 y Core. Reemplaza como documento externo de trabajo a v0.5. Distingue contratos acordados de ajustes propuestos; no declara completada la implementación RabbitMQ.
+Este documento es la versión vigente de M3 para revisión con M1, M2, M6, M7 y Core. Reemplaza como documento externo de trabajo a v0.6. Distingue contratos acordados de ajustes propuestos y refleja la implementación M3 disponible en código.
 
 ## 1. Convenciones del Core
 
@@ -45,7 +45,7 @@ Todo evento publicado por M3 utiliza este envelope, sin campos extra:
 - M2: `ticketUpdated`.
 - M6: `infrastructureRepairRequested`, `containerDamaged`, `treeRiskDetected`.
 - M7: `streetClosureApproved`, `streetClosureRejected`, `streetClosureEnded`, `roadAccidentRegistered`.
-- M1: `casefileResolved`, con casing todavía pendiente frente a `caseFileResolved` registrado por Core.
+- M1/Core: M3 implementa `caseFileResolved`, que coincide con la suscripción activa de Core. M1 debe confirmar y registrar exactamente ese nombre antes de la prueba bilateral.
 
 ### Eventos publicados
 
@@ -419,7 +419,7 @@ Los campos `inspectorId`, `ownerNationalId` y `nationalId` permanecen con el for
 
 ## 6. Integración con M1 Expedientes
 
-M1 confirmó que consume `publicWorksProjectApproved` y `publicWorksProjectCompleted`. El nombre `casefileResolved` y su envelope continúan pendientes frente a `caseFileResolved` registrado por Core. Los ejemplos siguientes son propuesta M3 alineada al envelope y a UUID; requieren confirmación de M1.
+M1 confirmó que consume `publicWorksProjectApproved` y `publicWorksProjectCompleted`. M3 adopta `caseFileResolved`, que coincide con la suscripción activa informada por Core; su publicación exacta todavía requiere confirmación de M1/Core. Las obras públicas son expedientes institucionales: `citizenId` es opcional y se omite si no existe un titular ciudadano. El vínculo se realiza con `publicWorksProjectId`, UUID público y estable de la obra, que M1 devuelve en `externalReference.id`.
 
 ### 6.1 publicWorksProjectApproved
 
@@ -435,7 +435,8 @@ M1 confirmó que consume `publicWorksProjectApproved` y `publicWorksProjectCompl
     "publicWorksProjectId": "7b745d35-536d-4387-a722-cb690586305d",
     "projectNumber": "OBRA-8832",
     "name": "Renovación Plaza Central",
-    "approvedAt": "2026-10-20T13:00:00-03:00"
+    "approvedAt": "2026-10-20T13:00:00-03:00",
+    "approvedBudget": 20000000
   }
 }
 ```
@@ -454,17 +455,20 @@ M1 confirmó que consume `publicWorksProjectApproved` y `publicWorksProjectCompl
     "publicWorksProjectId": "7b745d35-536d-4387-a722-cb690586305d",
     "projectNumber": "OBRA-8832",
     "completedAt": "2026-12-20T17:00:00-03:00",
-    "finalBudget": 19500000
+    "finalBudget": 19500000,
+    "caseFileId": "d40e20ba-e2a8-4dd0-a11f-b6d6b58c68a8"
   }
 }
 ```
 
-### 6.3 casefileResolved recibido
+`caseFileId` es opcional en este evento: solo se incluye si M3 ya recibió el vínculo desde M1.
+
+### 6.3 caseFileResolved recibido
 
 ```json
 {
   "eventId": "74bad23f-80bc-4fd4-9c61-8f514a60cc5e",
-  "eventType": "casefileResolved",
+  "eventType": "caseFileResolved",
   "eventVersion": "1.0",
   "occurredAt": "2026-10-20T11:45:00-03:00",
   "sourceModule": "ciudadanos",
@@ -517,8 +521,9 @@ M1 confirmó que consume `publicWorksProjectApproved` y `publicWorksProjectCompl
 
 ### M1
 
-- Confirmar `casefileResolved` o `caseFileResolved`.
-- Confirmar los tres payloads adaptados a Core y UUID.
+- Confirmar y registrar en Core `caseFileResolved`, con `caseFileId` UUID y `externalReference.id` igual a `publicWorksProjectId`.
+- Confirmar que los resultados v1.0 son `approved` y `rejected`.
+- Ejecutar la prueba bilateral por Core.
 
 ### Core
 
@@ -529,7 +534,7 @@ M1 confirmó que consume `publicWorksProjectApproved` y `publicWorksProjectCompl
 
 ## 9. Estado de implementación
 
-Este documento define contratos. Al 20 de octubre, el backend M3 todavía no posee el adaptador RabbitMQ/Core, Inbox/Outbox ni los handlers de todos estos eventos. La publicación del contrato no equivale a una integración desplegada o probada.
+El backend M3 posee adaptador AMQPS/Core, Inbox/Outbox, handlers de los eventos recibidos documentados y publicación transaccional de sus eventos. La integración M1 queda disponible del lado M3, pero no se considera bilateralmente confirmada hasta que M1/Core registren `caseFileResolved` y se ejecute una prueba compartida.
 
 ## 10. Fuentes y cambios de v0.6
 

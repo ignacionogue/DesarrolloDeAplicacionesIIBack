@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://m3.obras/contracts/publicWorksProjectApproved.data.schema.json",
+  "title": "publicWorksProjectApproved data v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["publicWorksProjectId", "projectNumber", "name", "approvedAt"],
+  "properties": {
+    "publicWorksProjectId": {"type": "string", "format": "uuid"},
+    "projectNumber": {"type": "string", "minLength": 1, "maxLength": 80},
+    "name": {"type": "string", "minLength": 1, "maxLength": 200},
+    "approvedAt": {"type": "string", "format": "date-time"},
+    "approvedBudget": {"type": "number", "minimum": 0},
+    "citizenId": {"type": "string", "format": "uuid", "description": "Optional; omitted for institutional projects without a citizen owner."}
+  }
+}
