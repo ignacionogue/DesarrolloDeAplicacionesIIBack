@@ -49,6 +49,10 @@ El contrato M3 vigente se conserva en docs/contracts/contrato-m3-v0.7.md.
 - El envelope saliente contiene solo los campos acordados. correlationId siempre
   existe. Una acción HTTP posterior conserva la correlación, pero no inventa
   causationId a partir de un evento histórico.
+- DEF-06 (Core, consulta del 2/11/2026): M3 siempre publica `data` y exige que sea
+  un objeto JSON. La clave no puede omitirse ni enviarse como `null`, array o valor
+  escalar. El codec, los schemas completos de M3 y una prueba de regresión aplican
+  esta regla, por lo que hacerla obligatoria en Core no afecta a Obras.
 - Los UUID técnicos de personas y órdenes son persistentes; REST conserva sus IDs
   numéricos. updatedBy se obtiene del usuario autenticado en base de datos, nunca
   del body; un proceso automático se identifica SYSTEM.
