@@ -2,10 +2,9 @@
 
 ## Estado
 
-Implementación local en feature/integracion-core-rabbitmq, desde origin/develop
-73bf4495db9c296e0ac93d93683ef1128d971590. No se modificaron Frontend, Azure,
-Terraform ni pipelines. No se debe declarar completa la integración compartida:
-faltan credenciales AMQPS, habilitación de IP de salida y la prueba bilateral real.
+Implementación M3 actualizada el 1/11/2026 sobre `origin/develop`. No se modificaron
+Frontend, Azure, Terraform ni pipelines. No se debe declarar completa la integración
+compartida hasta ejecutar la prueba bilateral real con cada módulo.
 
 | Área | Implementado y probado localmente | Pendiente externo |
 | --- | --- | --- |
@@ -14,7 +13,7 @@ faltan credenciales AMQPS, habilitación de IP de salida y la prueba bilateral r
 | M2 | ticketUpdated, gestión única, actualización por updatedAt, seis variantes de salida y vínculo a órdenes | Prueba bilateral v1.78 |
 | M6 | Tres handlers, `neighborhoodId` UUID opcional, Strategy AMBIENTE y schemas data/full de Scheduled/Completed | Prueba bilateral requestId → sourceRequestId; detalle de consumedMaterials no inventado |
 | M7 | Contrato v1.0 aceptado: solicitud/prórroga, UUID, correlación/causalidad, ventanas y accidentes minimizados | Migración coordinada del typo en Core y prueba E2E |
-| M1 | Puerto existente ampliado para aprobación/finalización y puerto de resolución deshabilitado | Casing, envelope, payload y resultados de resolución |
+| M1 | UUID público de obra, publicación Outbox de aprobación/finalización y handler idempotente de `caseFileResolved` | Confirmación/registro del casing por M1/Core y prueba bilateral |
 | Core HTTP | Variables externas declaradas | Cliente pendiente del contrato completo de respuesta/errores; no interviene en AMQPS |
 
 ## Diagnóstico inicial y fuentes
@@ -23,14 +22,14 @@ El backend existente tenía REST, seguridad JWT multiusuario, Strategy para alta
 PostgreSQL/Flyway V1-V4 y un ProjectEventPublisher que solo registraba un log.
 Los cortes usaban fechas sin hora y tramos de texto; no existían Inbox/Outbox.
 
-Fuentes: contrato-m3-v0.6.md recibido, guía M2 v1.78 y su ZIP de schemas.
+Fuentes: contrato M3 v0.7, guía M2 v1.78 y su ZIP de schemas.
 Antes de copiar se verificó el SHA-256:
 f20347c6cea5e9197e11d73cb3aef77db6fffd4c342ab75232381775c671b27f
 
 Las 47 entradas del paquete M2 quedaron en src/test/resources/contracts/m2-eventos-v1.78.
 Los schemas requeridos por runtime se copian sin cambios a resources/contracts/m2-v1.78.
 El validador original aceptó 33 ejemplos válidos y rechazó 68 inválidos.
-El contrato M3 recibido se conserva en docs/contracts/contrato-m3-v0.6.md.
+El contrato M3 vigente se conserva en docs/contracts/contrato-m3-v0.7.md.
 
 ## Arquitectura y decisiones
 
@@ -166,6 +165,26 @@ se validan como UUID. No se usa DNI como correlación ni se persiste/loguea su c
 Los accidentes abren una proyección de evaluación; no se inventa una orden ni
 un contrato definitivo a partir de los identificadores todavía pendientes.
 
+## M1: proyectos y expedientes
+
+Cada obra conserva su ID numérico REST y agrega un `publicWorksProjectId` UUID
+estable para integración. Al aprobar se publica `publicWorksProjectApproved`
+mediante Outbox dentro de la misma transacción. Al finalizar se publica
+`publicWorksProjectCompleted`; la finalización exige 100% de avance y todas las
+órdenes vinculadas en estado VALIDADA.
+
+Las obras son expedientes institucionales por defecto. `citizenId` es opcional y
+no se publica si no existe un titular real. `caseFileId` tampoco se inventa al
+aprobar: M1 lo crea y lo devuelve en `caseFileResolved`, junto con
+`externalReference.id=publicWorksProjectId`. M3 minimiza el evento antes de Inbox,
+persiste el vínculo y no conserva identificadores personales ajenos al proceso.
+
+M3 implementa el casing `caseFileResolved`, coincidente con la suscripción activa
+informada por Core. M1/Core deben confirmar y registrar exactamente ese nombre,
+el payload UUID y los resultados `approved`/`rejected` antes de la prueba bilateral.
+Los schemas data/full v1.0 de los dos eventos publicados están en
+`resources/contracts/m3`.
+
 ## Migraciones nuevas
 
 | Versión | Cambio |
@@ -175,6 +194,7 @@ un contrato definitivo a partir de los identificadores todavía pendientes.
 | V7 Java | UUID persistentes para usuarios/órdenes, backfill compatible PostgreSQL/H2 |
 | V8 | Gestiones M6 y origen AMBIENTE |
 | V9 | Extensión de StreetClosure y proyección minimizada de accidentes |
+| V10 Java | UUID público/correlación persistentes de obras y vínculo con expediente M1 |
 
 V1-V4 no se modifican. Flyway sigue siendo la única vía de schema;
 ddl-auto=validate. V9 conserva fechas antiguas sin asignarles offset artificial.
