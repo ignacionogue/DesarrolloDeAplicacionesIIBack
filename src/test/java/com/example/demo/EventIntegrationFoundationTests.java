@@ -58,6 +58,19 @@ class EventIntegrationFoundationTests {
         tree.withObject("data").put("sensitive","secret");
         assertFalse(event.toString().contains("secret"));
     }
+    @Test void dataIsAlwaysPresentAndMustBeAnObject() {
+        var valid=(tools.jackson.databind.node.ObjectNode)json.readTree(codec.encode(event("testEvent")));
+        assertTrue(valid.has("data")); assertTrue(valid.path("data").isObject());
+
+        var missing=valid.deepCopy(); missing.remove("data");
+        assertThrows(InvalidEventException.class,()->codec.decode(missing.toString().getBytes(StandardCharsets.UTF_8)));
+
+        var nullData=valid.deepCopy(); nullData.putNull("data");
+        assertThrows(InvalidEventException.class,()->codec.decode(nullData.toString().getBytes(StandardCharsets.UTF_8)));
+
+        var arrayData=valid.deepCopy(); arrayData.putArray("data");
+        assertThrows(InvalidEventException.class,()->codec.decode(arrayData.toString().getBytes(StandardCharsets.UTF_8)));
+    }
     @Test void rejectsUnknownFieldsWrongVersionUuidAndMissingOffsetWithoutLeakingInput() {
         for (String field : List.of("traceId","receivedAt","occuredAt")) {
             var tree=(tools.jackson.databind.node.ObjectNode)json.readTree(codec.encode(event("testEvent")));
