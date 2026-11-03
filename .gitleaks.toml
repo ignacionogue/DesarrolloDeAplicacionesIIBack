@@ -1,0 +1,11 @@
+title = "Obras Publicas Gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Fixtures H2 y tokens ficticios del dominio reservado .example"
+paths = [
+  '''^src/test/resources/application\.properties$''',
+  '''^src/test/resources/contracts/m2-eventos-v1\.78/examples/valid/updateTicketStatus_(PROGRESS_avance|RESOLVED)\.json$'''
+]

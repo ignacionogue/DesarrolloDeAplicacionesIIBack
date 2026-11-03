@@ -32,6 +32,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Java
@@ -46,6 +47,25 @@ jobs:
 
       - name: Test and package
         run: ./mvnw -B -ntp clean verify
+
+      - name: Repeat test suite twice to detect flakiness
+        run: |
+          ./mvnw -B -ntp test
+          ./mvnw -B -ntp test
+
+      - name: Scan repository for committed secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Scan filesystem dependencies and configuration
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
 
       - name: Build container without publishing
         run: docker build --tag desarrolloappsii-back:${GITHUB_SHA} .
