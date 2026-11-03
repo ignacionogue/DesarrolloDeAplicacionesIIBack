@@ -8,6 +8,7 @@ delivery-results.json
 *.key
 .local-validation/
 target/
+gitleaks-full-history.json
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
