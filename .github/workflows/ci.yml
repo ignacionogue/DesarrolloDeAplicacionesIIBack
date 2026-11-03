@@ -53,6 +53,17 @@ jobs:
           ./mvnw -B -ntp test
           ./mvnw -B -ntp test
 
+      - name: Mutation testing for domain logic
+        run: ./mvnw -B -ntp -Pmutation org.pitest:pitest-maven:mutationCoverage
+
+      - name: Upload mutation evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: backend-mutation-evidence
+          path: target/pit-reports/
+          if-no-files-found: ignore
+
       - name: Scan repository for committed secrets
         uses: gitleaks/gitleaks-action@v2
         env:
