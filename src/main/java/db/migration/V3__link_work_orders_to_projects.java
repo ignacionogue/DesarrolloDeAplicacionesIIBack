@@ -7,6 +7,7 @@ import java.util.ArrayList;
 
 /** V1 used an unnamed CHECK: PostgreSQL and H2 assign different names to it. */
 public class V3__link_work_orders_to_projects extends BaseJavaMigration {
+    @SuppressWarnings("java:S2077") // Constraint identifier is read from the catalog and allow-listed below.
     @Override public void migrate(Context context) throws Exception {
         var connection = context.getConnection();
         var constraints = new ArrayList<String>();
@@ -31,8 +32,12 @@ public class V3__link_work_orders_to_projects extends BaseJavaMigration {
             }
         }
         if (constraints.size() != 1) throw new SQLException("Expected exactly one V1 origin CHECK");
+        String constraintName = constraints.get(0);
+        if (!constraintName.matches("[A-Za-z0-9_]+")) {
+            throw new SQLException("Unexpected origin CHECK identifier");
+        }
         try (var sql = connection.createStatement()) {
-            sql.execute("ALTER TABLE orden_trabajo DROP CONSTRAINT \"" + constraints.get(0).replace("\"", "\"\"") + "\"");
+            sql.execute("ALTER TABLE orden_trabajo DROP CONSTRAINT \"" + constraintName + "\"");
             sql.execute("ALTER TABLE orden_trabajo ADD CONSTRAINT ck_orden_origin CHECK (origin IN ('MANUAL','PROYECTO','ATENCION_CIUDADANA','INSPECCION'))");
             sql.execute("ALTER TABLE orden_trabajo ADD COLUMN project_id BIGINT REFERENCES proyecto_obra(id)");
             sql.execute("CREATE INDEX idx_orden_trabajo_project ON orden_trabajo(project_id)");

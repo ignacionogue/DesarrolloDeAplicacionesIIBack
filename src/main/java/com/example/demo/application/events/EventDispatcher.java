@@ -24,15 +24,16 @@ public class EventDispatcher {
     }
     private String dispatchDecoded(EventEnvelope event) {
         metrics.result("received",event);
-        if (event.eventType().equals("ticketCreated")) {
+        String eventType = event.eventType();
+        if ("ticketCreated".equals(eventType)) {
             m2.validate(event); metrics.result("ignored",event); return "ignored";
         }
         var match=registry.find(event);
         if (match.isEmpty()) {
             // Pending contracts must not be silently ACKed as if their business work had completed.
-            if (java.util.Set.of("infrastructureRepairRequested","containerDamaged","treeRiskDetected",
+            if (eventType != null && java.util.Set.of("infrastructureRepairRequested","containerDamaged","treeRiskDetected",
                     "streetClosureApproved","streetClosureRejected","streetClosureEnded","roadAccidentRegistered")
-                    .contains(event.eventType())) throw new IllegalStateException("HANDLER_NOT_ENABLED");
+                    .contains(eventType)) throw new IllegalStateException("HANDLER_NOT_ENABLED");
             metrics.result("ignored",event); return "ignored";
         }
         var handler=match.get();
