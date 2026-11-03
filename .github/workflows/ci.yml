@@ -48,6 +48,25 @@ jobs:
       - name: Test and package
         run: ./mvnw -B -ntp clean verify
 
+      - name: Analyze with SonarQube Cloud
+        if: >-
+          github.event_name == 'pull_request' ||
+          github.ref == 'refs/heads/develop' ||
+          github.ref == 'refs/heads/main' ||
+          github.ref == 'refs/heads/master' ||
+          startsWith(github.ref, 'refs/heads/release/')
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >-
+          ./mvnw -B -ntp
+          org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar
+          -Dsonar.projectKey=ignacionogue_DesarrolloDeAplicacionesIIBack
+          -Dsonar.organization=ignacionogue
+          -Dsonar.host.url=https://sonarcloud.io
+          -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+          -Dsonar.qualitygate.wait=true
+          -Dsonar.qualitygate.timeout=300
+
       - name: Repeat test suite twice to detect flakiness
         run: |
           ./mvnw -B -ntp test
