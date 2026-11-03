@@ -36,6 +36,11 @@
             <artifactId>spring-rabbit</artifactId>
         </dependency>
         <dependency>
+            <groupId>com.rabbitmq</groupId>
+            <artifactId>amqp-client</artifactId>
+            <version>5.34.0</version>
+        </dependency>
+        <dependency>
             <groupId>com.networknt</groupId>
             <artifactId>json-schema-validator</artifactId>
             <version>3.0.7</version>
