@@ -54,6 +54,8 @@ jobs:
 
       - name: Scan repository for committed secrets
         uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Scan filesystem dependencies and configuration
         uses: aquasecurity/trivy-action@v0.36.0
