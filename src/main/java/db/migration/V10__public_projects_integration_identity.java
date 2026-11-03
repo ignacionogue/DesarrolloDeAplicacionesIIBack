@@ -8,18 +8,22 @@ public class V10__public_projects_integration_identity extends BaseJavaMigration
     @Override public void migrate(Context context) throws Exception {
         var connection = context.getConnection();
         String product = connection.getMetaData().getDatabaseProductName();
-        String uuidFunction = switch (product) {
-            case "PostgreSQL" -> "gen_random_uuid()";
-            case "H2" -> "RANDOM_UUID()";
-            default -> throw new IllegalStateException("Unsupported migration database");
-        };
         try (var sql = connection.createStatement()) {
-            sql.execute("ALTER TABLE proyecto_obra ADD COLUMN integration_id UUID DEFAULT " + uuidFunction);
-            sql.execute("UPDATE proyecto_obra SET integration_id = " + uuidFunction + " WHERE integration_id IS NULL");
+            if ("PostgreSQL".equals(product)) {
+                sql.execute("ALTER TABLE proyecto_obra ADD COLUMN integration_id UUID DEFAULT gen_random_uuid()");
+                sql.execute("UPDATE proyecto_obra SET integration_id = gen_random_uuid() WHERE integration_id IS NULL");
+                sql.execute("ALTER TABLE proyecto_obra ADD COLUMN integration_correlation_id UUID DEFAULT gen_random_uuid()");
+                sql.execute("UPDATE proyecto_obra SET integration_correlation_id = gen_random_uuid() WHERE integration_correlation_id IS NULL");
+            } else if ("H2".equals(product)) {
+                sql.execute("ALTER TABLE proyecto_obra ADD COLUMN integration_id UUID DEFAULT RANDOM_UUID()");
+                sql.execute("UPDATE proyecto_obra SET integration_id = RANDOM_UUID() WHERE integration_id IS NULL");
+                sql.execute("ALTER TABLE proyecto_obra ADD COLUMN integration_correlation_id UUID DEFAULT RANDOM_UUID()");
+                sql.execute("UPDATE proyecto_obra SET integration_correlation_id = RANDOM_UUID() WHERE integration_correlation_id IS NULL");
+            } else {
+                throw new IllegalStateException("Unsupported migration database");
+            }
             sql.execute("ALTER TABLE proyecto_obra ALTER COLUMN integration_id SET NOT NULL");
             sql.execute("ALTER TABLE proyecto_obra ADD CONSTRAINT uq_proyecto_obra_integration_id UNIQUE (integration_id)");
-            sql.execute("ALTER TABLE proyecto_obra ADD COLUMN integration_correlation_id UUID DEFAULT " + uuidFunction);
-            sql.execute("UPDATE proyecto_obra SET integration_correlation_id = " + uuidFunction + " WHERE integration_correlation_id IS NULL");
             sql.execute("ALTER TABLE proyecto_obra ALTER COLUMN integration_correlation_id SET NOT NULL");
             sql.execute("ALTER TABLE proyecto_obra ADD COLUMN case_file_id UUID");
             sql.execute("ALTER TABLE proyecto_obra ADD COLUMN case_file_number VARCHAR(80)");

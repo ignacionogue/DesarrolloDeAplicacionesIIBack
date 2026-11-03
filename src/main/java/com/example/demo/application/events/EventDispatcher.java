@@ -24,7 +24,11 @@ public class EventDispatcher {
     }
     private String dispatchDecoded(EventEnvelope event) {
         metrics.result("received",event);
-        if (event.eventType().equals("ticketCreated")) {
+        String eventType = event.eventType();
+        if (eventType == null || eventType.isBlank()) {
+            throw new IllegalArgumentException("EVENT_TYPE_REQUIRED");
+        }
+        if ("ticketCreated".equals(eventType)) {
             m2.validate(event); metrics.result("ignored",event); return "ignored";
         }
         var match=registry.find(event);
@@ -32,7 +36,7 @@ public class EventDispatcher {
             // Pending contracts must not be silently ACKed as if their business work had completed.
             if (java.util.Set.of("infrastructureRepairRequested","containerDamaged","treeRiskDetected",
                     "streetClosureApproved","streetClosureRejected","streetClosureEnded","roadAccidentRegistered")
-                    .contains(event.eventType())) throw new IllegalStateException("HANDLER_NOT_ENABLED");
+                    .contains(eventType)) throw new IllegalStateException("HANDLER_NOT_ENABLED");
             metrics.result("ignored",event); return "ignored";
         }
         var handler=match.get();
