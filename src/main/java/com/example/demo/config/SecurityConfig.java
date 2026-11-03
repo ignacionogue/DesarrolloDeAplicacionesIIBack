@@ -20,6 +20,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     @Bean
+    @SuppressWarnings("java:S4502") // Stateless bearer-JWT API: no browser cookie carries authentication.
     SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         return http
                 // The REST API is stateless and authenticates exclusively with a bearer JWT.
