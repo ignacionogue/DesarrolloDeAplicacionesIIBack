@@ -23,6 +23,7 @@ public class EventDispatcher {
         }
     }
     private String dispatchDecoded(EventEnvelope event) {
+        java.util.Objects.requireNonNull(event, "EVENT_DECODED_NULL");
         metrics.result("received",event);
         String eventType = event.eventType();
         if ("ticketCreated".equals(eventType)) {
