@@ -49,7 +49,7 @@ class PostgresContainerSmokeTests {
         Integer version = jdbcTemplate.queryForObject(
                 "select max(cast(version as integer)) from flyway_schema_history where success = true",
                 Integer.class);
-        assertThat(version).isEqualTo(10);
+        assertThat(version).isEqualTo(12);
     }
 
     @Test
