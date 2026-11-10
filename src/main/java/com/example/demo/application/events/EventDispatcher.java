@@ -15,7 +15,7 @@ public class EventDispatcher {
     public String dispatch(byte[] bytes) {
         EventEnvelope event=null;
         try {
-            event=codec.decode(bytes);
+            event=java.util.Objects.requireNonNull(codec.decode(bytes), "EVENT_DECODED_NULL");
             return dispatchDecoded(event);
         } catch(RuntimeException failure) {
             metrics.result("error",event);

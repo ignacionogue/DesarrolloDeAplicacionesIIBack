@@ -162,4 +162,11 @@ class EventIntegrationFoundationTests {
         new RabbitEventListener(failing,telemetry).onMessage(new Message(new byte[0],props),channel);
         verify(channel).basicNack(42,false,false); verify(channel,never()).basicAck(anyLong(),anyBoolean());
     }
+    @Test void decoderReturningNullIsReportedAsTechnicalFailure() {
+        var nullCodec=mock(EventSerialization.class);
+        var telemetry=mock(EventTelemetry.class);
+        var dispatcher=new EventDispatcher(new EventHandlerRegistry(List.of()),inbox,nullCodec,telemetry,schemas);
+        assertThrows(NullPointerException.class,()->dispatcher.dispatch(new byte[]{1}));
+        verify(telemetry).result("error",null);
+    }
 }
