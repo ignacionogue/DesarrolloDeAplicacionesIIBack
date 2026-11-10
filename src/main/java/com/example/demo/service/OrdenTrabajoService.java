@@ -6,12 +6,10 @@ import com.example.demo.dto.request.ScheduleOTRequest;
 import com.example.demo.dto.request.ValidateOTRequest;
 import com.example.demo.dto.response.OrdenTrabajoResponse;
 import com.example.demo.dto.response.PageResponse;
-import com.example.demo.exception.InvalidStateTransitionException;
 import com.example.demo.exception.NotFoundException;
 import com.example.demo.mapper.OrdenTrabajoMapper;
 import com.example.demo.strategy.WorkOrderCreationStrategyResolver;
 import com.example.demo.model.Cuadrilla;
-import com.example.demo.model.EstadoOT;
 import com.example.demo.model.Observacion;
 import com.example.demo.model.OrdenTrabajo;
 import com.example.demo.repository.CuadrillaRepository;
@@ -24,7 +22,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -89,7 +86,13 @@ public class OrdenTrabajoService {
 
     @Transactional
     public OrdenTrabajoResponse actualizar(Long id, OrdenTrabajoRequest request) {
+        return actualizar(id, request, null);
+    }
+
+    @Transactional
+    public OrdenTrabajoResponse actualizar(Long id, OrdenTrabajoRequest request, Long expectedVersion) {
         OrdenTrabajo ot = buscarOrFallar(id);
+        ot.requireVersion(expectedVersion);
         eventHandlers.forEach(handler -> handler.before(ot, Action.EDIT));
         Cuadrilla cuadrilla = resolverCuadrilla(request.getCrew());
         // Revalidate origin/project on PUT without replacing identity or workflow state.
@@ -102,8 +105,13 @@ public class OrdenTrabajoService {
 
     @Transactional
     public OrdenTrabajoResponse programar(Long id, ScheduleOTRequest request) {
+        return programar(id, request, null);
+    }
+
+    @Transactional
+    public OrdenTrabajoResponse programar(Long id, ScheduleOTRequest request, Long expectedVersion) {
         OrdenTrabajo ot = buscarOrFallar(id);
-        validarTransicion(ot, "programar", EstadoOT.PENDIENTE, EstadoOT.PROGRAMADA, EstadoOT.ASIGNADA);
+        ot.requireVersion(expectedVersion);
         eventHandlers.forEach(handler -> handler.before(ot, Action.SCHEDULE));
         if (request.getCrew() != null && request.getCrew().isBlank()) {
             throw new com.example.demo.exception.InvalidRequestException("crew no puede estar vacio; omitalo para conservar la cuadrilla");
@@ -116,8 +124,13 @@ public class OrdenTrabajoService {
 
     @Transactional
     public OrdenTrabajoResponse iniciar(Long id) {
+        return iniciar(id, null);
+    }
+
+    @Transactional
+    public OrdenTrabajoResponse iniciar(Long id, Long expectedVersion) {
         OrdenTrabajo ot = buscarOrFallar(id);
-        validarTransicion(ot, "iniciar", EstadoOT.PROGRAMADA, EstadoOT.ASIGNADA, EstadoOT.PAUSADA, EstadoOT.REABIERTA);
+        ot.requireVersion(expectedVersion);
         eventHandlers.forEach(handler -> handler.before(ot, Action.START));
         ot.iniciar();
         eventHandlers.forEach(handler -> handler.after(ot, Action.START));
@@ -126,8 +139,13 @@ public class OrdenTrabajoService {
 
     @Transactional
     public OrdenTrabajoResponse pausar(Long id) {
+        return pausar(id, null);
+    }
+
+    @Transactional
+    public OrdenTrabajoResponse pausar(Long id, Long expectedVersion) {
         OrdenTrabajo ot = buscarOrFallar(id);
-        validarTransicion(ot, "pausar", EstadoOT.EN_EJECUCION);
+        ot.requireVersion(expectedVersion);
         eventHandlers.forEach(handler -> handler.before(ot, Action.PAUSE));
         ot.pausar();
         eventHandlers.forEach(handler -> handler.after(ot, Action.PAUSE));
@@ -136,8 +154,13 @@ public class OrdenTrabajoService {
 
     @Transactional
     public OrdenTrabajoResponse completar(Long id, CompleteOTRequest request) {
+        return completar(id, request, null);
+    }
+
+    @Transactional
+    public OrdenTrabajoResponse completar(Long id, CompleteOTRequest request, Long expectedVersion) {
         OrdenTrabajo ot = buscarOrFallar(id);
-        validarTransicion(ot, "completar", EstadoOT.EN_EJECUCION, EstadoOT.PAUSADA);
+        ot.requireVersion(expectedVersion);
         eventHandlers.forEach(handler -> handler.before(ot, Action.COMPLETE));
         ot.completar(request.getOutcome());
         eventHandlers.forEach(handler -> handler.after(ot, Action.COMPLETE));
@@ -146,8 +169,13 @@ public class OrdenTrabajoService {
 
     @Transactional
     public OrdenTrabajoResponse validar(Long id, ValidateOTRequest request) {
+        return validar(id, request, null);
+    }
+
+    @Transactional
+    public OrdenTrabajoResponse validar(Long id, ValidateOTRequest request, Long expectedVersion) {
         OrdenTrabajo ot = buscarOrFallar(id);
-        validarTransicion(ot, "validar", EstadoOT.COMPLETADA);
+        ot.requireVersion(expectedVersion);
         eventHandlers.forEach(handler -> handler.before(ot, Action.VALIDATE));
         if (request.getObservations() != null && !request.getObservations().isBlank()) {
             observacionRepository.save(new Observacion(ot, request.getObservations()));
@@ -166,14 +194,6 @@ public class OrdenTrabajoService {
         }
         return cuadrillaRepository.findByNombreIgnoreCase(nombre.trim())
                 .orElseThrow(() -> new NotFoundException("No se encontro la cuadrilla: " + nombre));
-    }
-
-    private void validarTransicion(OrdenTrabajo ot, String accion, EstadoOT... estadosValidos) {
-        Set<EstadoOT> permitidos = EnumSet.copyOf(List.of(estadosValidos));
-        if (!permitidos.contains(ot.getStatus())) {
-            throw new InvalidStateTransitionException(
-                    "No se puede " + accion + " una orden de trabajo en estado " + ot.getStatus());
-        }
     }
 
     private OrdenTrabajo buscarOrFallar(Long id) {

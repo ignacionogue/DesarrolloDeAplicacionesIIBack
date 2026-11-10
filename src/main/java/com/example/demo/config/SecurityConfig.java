@@ -40,6 +40,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/public-works/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/public-works/assistant").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/public-works/projects", "/api/public-works/work-orders",
                                 "/api/public-works/crews", "/api/public-works/street-closures", "/api/public-works/street-closures/integration",
                                 "/api/public-works/tickets/{ticketId}/updates").hasRole("PERSONAL_OBRAS")
@@ -60,9 +61,13 @@ public class SecurityConfig {
 
     private static void writeError(HttpServletResponse response, int status, String message, String code) throws IOException {
         response.setStatus(status);
-        response.setContentType("application/json");
+        response.setContentType("application/problem+json");
         response.setCharacterEncoding("UTF-8");
         // Both strings are fixed server constants, never request input.
-        response.getWriter().write("{\"message\":\"" + message + "\",\"code\":\"" + code + "\",\"details\":[]}");
+        response.getWriter().write("{\"type\":\"https://obras.municipalidad.example/problems/" +
+                code.toLowerCase(java.util.Locale.ROOT).replace('_', '-') +
+                "\",\"title\":\"" + (status == 401 ? "Unauthorized" : "Forbidden") +
+                "\",\"status\":" + status + ",\"detail\":\"" + message +
+                "\",\"message\":\"" + message + "\",\"code\":\"" + code + "\",\"details\":[]}");
     }
 }

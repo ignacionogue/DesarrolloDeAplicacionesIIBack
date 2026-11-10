@@ -8,6 +8,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -29,6 +30,9 @@ public class ProyectoObra {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Version
+    @Column(nullable = false)
+    private long version;
 
     @Column(nullable = false, unique = true, updatable = false)
     private UUID integrationId = UUID.randomUUID();
@@ -189,6 +193,15 @@ public class ProyectoObra {
 
     public Long getId() {
         return id;
+    }
+
+    public long getVersion() { return version; }
+
+    public void requireVersion(Long expected) {
+        if (expected != null && version != expected) {
+            throw new com.example.demo.exception.PreconditionFailedException(
+                    "El ETag no coincide con la version actual del proyecto");
+        }
     }
 
     public UUID getIntegrationId() { return integrationId; }

@@ -34,41 +34,52 @@ public class ProyectoObraController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ProyectoObraResponse> obtenerPorId(@PathVariable Long id) {
-        return ResponseEntity.ok(service.obtenerPorId(id));
+        return versioned(service.obtenerPorId(id));
     }
 
     @PostMapping
     public ResponseEntity<ProyectoObraResponse> crear(@Valid @RequestBody ProyectoObraRequest request) {
-        return ResponseEntity.status(201).body(service.crear(request));
+        ProyectoObraResponse body = service.crear(request);
+        return ResponseEntity.status(201).eTag(EtagPreconditions.value(body.version())).body(body);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ProyectoObraResponse> actualizar(@PathVariable Long id,
-                                                            @Valid @RequestBody ProyectoObraRequest request) {
-        return ResponseEntity.ok(service.actualizar(id, request));
+                                                            @Valid @RequestBody ProyectoObraRequest request,
+                                                            @RequestHeader(value = "If-Match", required = false) String ifMatch) {
+        return versioned(service.actualizar(id, request, EtagPreconditions.parse(ifMatch)));
     }
 
     @PatchMapping("/{id}/submit-approval")
     @Operation(summary = "BORRADOR -> PENDIENTE_APROBACION")
-    public ResponseEntity<ProyectoObraResponse> enviarAAprobacion(@PathVariable Long id) {
-        return ResponseEntity.ok(service.enviarAAprobacion(id));
+    public ResponseEntity<ProyectoObraResponse> enviarAAprobacion(@PathVariable Long id,
+            @RequestHeader(value = "If-Match", required = false) String ifMatch) {
+        return versioned(service.enviarAAprobacion(id, EtagPreconditions.parse(ifMatch)));
     }
 
     @PatchMapping("/{id}/approve")
     @Operation(summary = "PENDIENTE_APROBACION -> APROBADO (dispara publicWorksProjectApproved)")
-    public ResponseEntity<ProyectoObraResponse> aprobar(@PathVariable Long id, @Valid @RequestBody ProjectApprovalRequest request) {
-        return ResponseEntity.ok(service.aprobar(id, request));
+    public ResponseEntity<ProyectoObraResponse> aprobar(@PathVariable Long id,
+            @Valid @RequestBody ProjectApprovalRequest request,
+            @RequestHeader(value = "If-Match", required = false) String ifMatch) {
+        return versioned(service.aprobar(id, request, EtagPreconditions.parse(ifMatch)));
     }
 
     @PatchMapping("/{id}/reject")
     @Operation(summary = "PENDIENTE_APROBACION -> RECHAZADO")
-    public ResponseEntity<ProyectoObraResponse> rechazar(@PathVariable Long id) {
-        return ResponseEntity.ok(service.rechazar(id));
+    public ResponseEntity<ProyectoObraResponse> rechazar(@PathVariable Long id,
+            @RequestHeader(value = "If-Match", required = false) String ifMatch) {
+        return versioned(service.rechazar(id, EtagPreconditions.parse(ifMatch)));
     }
 
     @PatchMapping("/{id}/complete")
     @Operation(summary = "Finaliza una obra al 100% con todas sus ordenes validadas")
-    public ResponseEntity<ProyectoObraResponse> finalizar(@PathVariable Long id) {
-        return ResponseEntity.ok(service.finalizar(id));
+    public ResponseEntity<ProyectoObraResponse> finalizar(@PathVariable Long id,
+            @RequestHeader(value = "If-Match", required = false) String ifMatch) {
+        return versioned(service.finalizar(id, EtagPreconditions.parse(ifMatch)));
+    }
+
+    private static ResponseEntity<ProyectoObraResponse> versioned(ProyectoObraResponse body) {
+        return ResponseEntity.ok().eTag(EtagPreconditions.value(body.version())).body(body);
     }
 }

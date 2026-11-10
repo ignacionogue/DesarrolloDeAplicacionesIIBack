@@ -65,7 +65,8 @@ public class ProyectoObraMapper {
                 calcularBudgetProgress(proyecto),
                 resolverStatus(proyecto),
                 proyecto.getTechnicalManager(),
-                proyecto.getContractor(), proyecto.getApprovedAt(), proyecto.getApprovalObservations()
+                proyecto.getContractor(), proyecto.getApprovedAt(), proyecto.getApprovalObservations(),
+                proyecto.getVersion()
         );
     }
 

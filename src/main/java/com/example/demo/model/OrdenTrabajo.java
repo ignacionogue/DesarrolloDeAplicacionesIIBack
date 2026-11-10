@@ -11,8 +11,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.time.LocalDate;
+import com.example.demo.state.WorkOrderStates;
 
 /**
  * Representa una intervencion/trabajo concreto (NO un ProyectoObra general).
@@ -34,6 +36,9 @@ public class OrdenTrabajo {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Version
+    @Column(nullable = false)
+    private long version;
     @Column(nullable = false, unique = true, updatable = false)
     private java.util.UUID integrationId = java.util.UUID.randomUUID();
 
@@ -138,31 +143,38 @@ public class OrdenTrabajo {
         this.scheduledDate = scheduledDate;
         if (cuadrilla != null) {
             this.cuadrilla = cuadrilla;
-            this.status = EstadoOT.ASIGNADA;
-        } else {
-            this.status = EstadoOT.PROGRAMADA;
         }
+        this.status = WorkOrderStates.from(this.status).schedule(this.cuadrilla != null);
     }
 
     public void iniciar() {
-        this.status = EstadoOT.EN_EJECUCION;
+        this.status = WorkOrderStates.from(this.status).start();
     }
 
     public void pausar() {
-        this.status = EstadoOT.PAUSADA;
+        this.status = WorkOrderStates.from(this.status).pause();
     }
 
     public void completar(String outcome) {
-        this.status = EstadoOT.COMPLETADA;
+        this.status = WorkOrderStates.from(this.status).complete();
         this.outcome = outcome;
     }
 
     public void validar(boolean aprobada) {
-        this.status = aprobada ? EstadoOT.VALIDADA : EstadoOT.REABIERTA;
+        this.status = WorkOrderStates.from(this.status).validate(aprobada);
     }
 
     public Long getId() {
         return id;
+    }
+
+    public long getVersion() { return version; }
+
+    public void requireVersion(Long expected) {
+        if (expected != null && version != expected) {
+            throw new com.example.demo.exception.PreconditionFailedException(
+                    "El ETag no coincide con la version actual de la orden");
+        }
     }
 
     public String getSourceRequestId() {
