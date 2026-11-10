@@ -55,7 +55,13 @@ public class ProyectoObraService {
 
     @Transactional
     public ProyectoObraResponse actualizar(Long id, ProyectoObraRequest request) {
+        return actualizar(id, request, null);
+    }
+
+    @Transactional
+    public ProyectoObraResponse actualizar(Long id, ProyectoObraRequest request, Long expectedVersion) {
         ProyectoObra proyecto = buscarOrFallar(id);
+        proyecto.requireVersion(expectedVersion);
         if (proyecto.getApprovalStatus() == EstadoAprobacion.APROBADO
                 && ((request.getApprovedBudget() != null && (proyecto.getApprovedBudget() == null
                     || request.getApprovedBudget().compareTo(proyecto.getApprovedBudget()) != 0))
@@ -70,7 +76,13 @@ public class ProyectoObraService {
 
     @Transactional
     public ProyectoObraResponse enviarAAprobacion(Long id) {
+        return enviarAAprobacion(id, null);
+    }
+
+    @Transactional
+    public ProyectoObraResponse enviarAAprobacion(Long id, Long expectedVersion) {
         ProyectoObra proyecto = buscarOrFallar(id);
+        proyecto.requireVersion(expectedVersion);
         validarTransicion(proyecto, EstadoAprobacion.BORRADOR, "enviar a aprobacion");
         proyecto.marcarPendienteAprobacion();
         return mapper.toResponse(repository.save(proyecto));
@@ -78,7 +90,13 @@ public class ProyectoObraService {
 
     @Transactional
     public ProyectoObraResponse aprobar(Long id, ProjectApprovalRequest request) {
+        return aprobar(id, request, null);
+    }
+
+    @Transactional
+    public ProyectoObraResponse aprobar(Long id, ProjectApprovalRequest request, Long expectedVersion) {
         ProyectoObra proyecto = buscarOrFallar(id);
+        proyecto.requireVersion(expectedVersion);
         validarTransicion(proyecto, EstadoAprobacion.PENDIENTE_APROBACION, "aprobar");
         proyecto.aprobar(request.approvedBudget(), request.approvedDeadlineDays(), request.approvedAt(), request.observations());
         ProyectoObra guardado = repository.save(proyecto);
@@ -88,8 +106,14 @@ public class ProyectoObraService {
 
     @Transactional
     public ProyectoObraResponse finalizar(Long id) {
+        return finalizar(id, null);
+    }
+
+    @Transactional
+    public ProyectoObraResponse finalizar(Long id, Long expectedVersion) {
         ProyectoObra proyecto = repository.findLockedById(id)
                 .orElseThrow(() -> new NotFoundException("No se encontro el proyecto con id " + id));
+        proyecto.requireVersion(expectedVersion);
         if (proyecto.getApprovalStatus() != EstadoAprobacion.APROBADO
                 || proyecto.getActivityStatus() == com.example.demo.model.EstadoActividad.FINALIZADA
                 || proyecto.getPhysicalProgress() == null || proyecto.getPhysicalProgress() != 100) {
@@ -107,7 +131,13 @@ public class ProyectoObraService {
 
     @Transactional
     public ProyectoObraResponse rechazar(Long id) {
+        return rechazar(id, null);
+    }
+
+    @Transactional
+    public ProyectoObraResponse rechazar(Long id, Long expectedVersion) {
         ProyectoObra proyecto = buscarOrFallar(id);
+        proyecto.requireVersion(expectedVersion);
         validarTransicion(proyecto, EstadoAprobacion.PENDIENTE_APROBACION, "rechazar");
         proyecto.rechazar();
         return mapper.toResponse(repository.save(proyecto));

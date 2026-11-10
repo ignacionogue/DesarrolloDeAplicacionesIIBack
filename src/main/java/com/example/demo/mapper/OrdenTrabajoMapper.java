@@ -54,7 +54,8 @@ public class OrdenTrabajoMapper {
                 ot.getEstimatedDurationHours(),
                 hasEvidence,
                 ot.getOutcome(),
-                ot.getProject() == null ? null : ot.getProject().getId()
+                ot.getProject() == null ? null : ot.getProject().getId(),
+                ot.getVersion()
         );
     }
 
