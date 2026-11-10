@@ -1,0 +1,23 @@
+{
+  "eventId": "5ac2b7ff-c8bc-4dae-a44b-1f9f1266a65b",
+  "eventType": "updateTicketStatus",
+  "eventVersion": "1.0",
+  "occurredAt": "2026-10-08T08:00:03-03:00",
+  "sourceModule": "obras",
+  "correlationId": "f80baa55-02b2-4cb0-bd51-d97c0c54e948",
+  "causationId": "61e12153-345e-4c9c-8b1a-724da1c75191",
+  "data": {
+    "ticketId": "550e8400-e29b-41d4-a716-446655440000",
+    "updateType": "STARTED",
+    "publicMessage": "Obras Públicas comenzó a gestionar tu reclamo.",
+    "internalMessage": "Orden de trabajo asignada a la cuadrilla 4.",
+    "progress": 0,
+    "details": null,
+    "attachments": [],
+    "updatedBy": {
+      "type": "EXTERNAL_USER",
+      "id": "3b9f1c52-6a7e-4d08-9c41-5e2a8d7f0b13"
+    },
+    "updateOccurredAt": "2026-10-08T08:00:00-03:00"
+  }
+}

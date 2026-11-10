@@ -1,0 +1,27 @@
+{
+  "eventId": "5c1e7a30-9d24-4b8f-8f0e-1a2b3c4d5e6f",
+  "eventType": "updateTicketStatus",
+  "eventVersion": "1.0",
+  "occurredAt": "2026-08-19T09:20:00-03:00",
+  "sourceModule": "obras",
+  "correlationId": "c1a2b3d4-1111-4aaa-8bbb-000000000004",
+  "causationId": null,
+  "data": {
+    "ticketId": "550e8400-e29b-41d4-a716-446655440000",
+    "updateType": "INFORMATION_REQUIRED",
+    "publicMessage": "Se necesita información adicional para poder continuar.",
+    "internalMessage": "La dirección actual no permite identificar con certeza la luminaria.",
+    "details": {
+      "informationRequest": {
+        "messageForCitizen": "Indique la altura aproximada y adjunte, si puede, una foto nocturna.",
+        "requiredBy": "2026-08-24T23:59:59-03:00"
+      }
+    },
+    "attachments": [],
+    "updatedBy": {
+      "type": "EXTERNAL_USER",
+      "id": "3b9f1c52-6a7e-4d08-9c41-5e2a8d7f0b13"
+    },
+    "updateOccurredAt": "2026-08-19T09:20:00-03:00"
+  }
+}

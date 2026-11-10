@@ -1,0 +1,31 @@
+{
+  "eventId": "eb05c6dd-98e7-4e2c-92f1-6c4afed16fdd",
+  "eventType": "ticketUpdated",
+  "eventVersion": "1.0",
+  "occurredAt": "2026-10-05T10:50:02-03:00",
+  "sourceModule": "atencion-ciudadana",
+  "correlationId": "b10ab760-1387-48ae-a28f-e2a98a87162f",
+  "causationId": null,
+  "data": {
+    "ticketId": "550e8400-e29b-41d4-a716-446655440000",
+    "publicId": "TK-2026-000123",
+    "citizenId": "8f14e45f-ea5e-4e5d-bd3f-1c71f4f6a001",
+    "isAnonymous": false,
+    "responsibleAreaId": "M3",
+    "updateType": "CONTENT_UPDATED",
+    "currentStatus": "IN_REVIEW",
+    "currentPriority": "MEDIUM",
+    "publicMessage": "Un agente corrigió la clasificación de tu reclamo.",
+    "details": {
+      "content": {
+        "requestType": "Reparación de bache",
+        "category": "Infraestructura vial",
+        "subcategory": "Calzadas",
+        "ticketType": "COMPLAINT",
+        "formData": {},
+        "resolutionDueAt": "2026-10-19T16:00:00-03:00"
+      }
+    },
+    "updatedAt": "2026-10-05T10:50:00-03:00"
+  }
+}

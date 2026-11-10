@@ -30,12 +30,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Java
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
         with:
           distribution: temurin
           java-version: "17"
@@ -46,6 +47,55 @@ jobs:
 
       - name: Test and package
         run: ./mvnw -B -ntp clean verify
+
+      - name: Analyze with SonarQube Cloud
+        if: >-
+          github.event_name == 'pull_request' ||
+          github.ref == 'refs/heads/develop' ||
+          github.ref == 'refs/heads/main' ||
+          github.ref == 'refs/heads/master' ||
+          startsWith(github.ref, 'refs/heads/release/')
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >-
+          ./mvnw -B -ntp
+          org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar
+          -Dsonar.projectKey=ignacionogue_DesarrolloDeAplicacionesIIBack
+          -Dsonar.organization=ignacionogue
+          -Dsonar.host.url=https://sonarcloud.io
+          -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+          -Dsonar.qualitygate.wait=true
+          -Dsonar.qualitygate.timeout=300
+
+      - name: Repeat test suite twice to detect flakiness
+        run: |
+          ./mvnw -B -ntp test
+          ./mvnw -B -ntp test
+
+      - name: Mutation testing for domain logic
+        run: ./mvnw -B -ntp -Pmutation org.pitest:pitest-maven:mutationCoverage
+
+      - name: Upload mutation evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: backend-mutation-evidence
+          path: target/pit-reports/
+          if-no-files-found: ignore
+
+      - name: Scan repository for committed secrets
+        uses: gitleaks/gitleaks-action@dcedce43c6f43de0b836d1fe38946645c9c638dc # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Scan filesystem dependencies and configuration
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
 
       - name: Build container without publishing
         run: docker build --tag desarrolloappsii-back:${GITHUB_SHA} .

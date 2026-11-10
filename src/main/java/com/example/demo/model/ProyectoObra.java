@@ -8,9 +8,12 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import java.util.UUID;
 
 /**
  * Representa una obra/proyecto general (NO una intervencion puntual: eso es OrdenTrabajo).
@@ -27,6 +30,26 @@ public class ProyectoObra {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Version
+    @Column(nullable = false)
+    private long version;
+
+    @Column(nullable = false, unique = true, updatable = false)
+    private UUID integrationId = UUID.randomUUID();
+
+    @Column(nullable = false, updatable = false)
+    private UUID integrationCorrelationId = UUID.randomUUID();
+
+    @Column(unique = true)
+    private UUID caseFileId;
+
+    @Column(length = 80)
+    private String caseFileNumber;
+
+    @Column(length = 40)
+    private String caseFileResolution;
+
+    private OffsetDateTime caseFileResolvedAt;
 
     @Column(nullable = false, length = 200)
     private String name;
@@ -153,9 +176,40 @@ public class ProyectoObra {
         this.approvalStatus = EstadoAprobacion.RECHAZADO;
     }
 
+    public void finalizar() {
+        this.activityStatus = EstadoActividad.FINALIZADA;
+    }
+
+    public void registrarResolucionExpediente(UUID caseFileId, String caseFileNumber,
+                                               String resolution, OffsetDateTime resolvedAt) {
+        if (this.caseFileId != null && !this.caseFileId.equals(caseFileId)) {
+            throw new IllegalStateException("PROJECT_CASE_FILE_CONFLICT");
+        }
+        this.caseFileId = caseFileId;
+        this.caseFileNumber = caseFileNumber;
+        this.caseFileResolution = resolution;
+        this.caseFileResolvedAt = resolvedAt;
+    }
+
     public Long getId() {
         return id;
     }
+
+    public long getVersion() { return version; }
+
+    public void requireVersion(Long expected) {
+        if (expected != null && version != expected) {
+            throw new com.example.demo.exception.PreconditionFailedException(
+                    "El ETag no coincide con la version actual del proyecto");
+        }
+    }
+
+    public UUID getIntegrationId() { return integrationId; }
+    public UUID getIntegrationCorrelationId() { return integrationCorrelationId; }
+    public UUID getCaseFileId() { return caseFileId; }
+    public String getCaseFileNumber() { return caseFileNumber; }
+    public String getCaseFileResolution() { return caseFileResolution; }
+    public OffsetDateTime getCaseFileResolvedAt() { return caseFileResolvedAt; }
 
     public String getName() {
         return name;

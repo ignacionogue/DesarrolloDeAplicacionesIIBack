@@ -25,6 +25,7 @@ public record ProyectoObraResponse(
         String technicalManager,
         String contractor,
         LocalDate approvedAt,
-        String approvalObservations
+        String approvalObservations,
+        long version
 ) {
 }

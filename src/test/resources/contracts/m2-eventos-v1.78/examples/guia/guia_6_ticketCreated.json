@@ -1,0 +1,34 @@
+{
+  "eventId": "7d6f97fa-3c4e-4f52-a443-7c2f5ec9b113",
+  "eventType": "ticketCreated",
+  "eventVersion": "1.0",
+  "occurredAt": "2026-08-18T13:25:01-03:00",
+  "sourceModule": "atencion-ciudadana",
+  "correlationId": "c1a2b3d4-1111-4aaa-8bbb-000000000001",
+  "causationId": null,
+  "data": {
+    "ticketId": "550e8400-e29b-41d4-a716-446655440000",
+    "publicId": "TK-2026-000123",
+    "citizenId": "8f14e45f-ea5e-4e5d-bd3f-1c71f4f6a001",
+    "isAnonymous": false,
+    "requestType": "Informar una luminaria apagada",
+    "category": "Alumbrado y equipamiento urbano",
+    "subcategory": "Alumbrado público",
+    "ticketType": "COMPLAINT",
+    "summary": "Luminaria apagada",
+    "description": "La luminaria de la esquina no funciona.",
+    "formData": {
+      "luminariasAfectadas": 1
+    },
+    "status": "REGISTERED",
+    "priority": "MEDIUM",
+    "responsibleAreaId": "M3",
+    "location": {
+      "addressLine": "Lima y Chile",
+      "neighborhoodId": "d9428888-122b-4f4f-a8a4-78c1f23c6d01"
+    },
+    "resolutionDueAt": "2026-08-25T16:00:00-03:00",
+    "attachments": [],
+    "createdAt": "2026-08-18T13:25:00-03:00"
+  }
+}

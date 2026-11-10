@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://m3.obras/contracts/publicWorksProjectApproved.schema.json",
+  "title": "publicWorksProjectApproved event v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["eventId", "eventType", "eventVersion", "occurredAt", "sourceModule", "correlationId", "data"],
+  "properties": {
+    "eventId": {"type": "string", "format": "uuid"},
+    "eventType": {"const": "publicWorksProjectApproved"},
+    "eventVersion": {"const": "1.0"},
+    "occurredAt": {"type": "string", "format": "date-time"},
+    "sourceModule": {"const": "obras"},
+    "correlationId": {"type": "string", "format": "uuid"},
+    "causationId": {"type": "string", "format": "uuid"},
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["publicWorksProjectId", "projectNumber", "name", "approvedAt"],
+      "properties": {
+        "publicWorksProjectId": {"type": "string", "format": "uuid"},
+        "projectNumber": {"type": "string", "minLength": 1, "maxLength": 80},
+        "name": {"type": "string", "minLength": 1, "maxLength": 200},
+        "approvedAt": {"type": "string", "format": "date-time"},
+        "approvedBudget": {"type": "number", "minimum": 0},
+        "citizenId": {"type": "string", "format": "uuid"}
+      }
+    }
+  }
+}

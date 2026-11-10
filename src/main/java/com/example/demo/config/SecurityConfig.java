@@ -20,9 +20,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     @Bean
+    @SuppressWarnings("java:S4502") // Stateless bearer-JWT API: no browser cookie carries authentication.
     SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         return http
-                .csrf(csrf -> csrf.disable())
+                // The REST API is stateless and authenticates exclusively with a bearer JWT.
+                // Keep CSRF enabled for any future browser/session endpoint and exclude only
+                // the stateless API surface, which does not use cookie authentication.
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**", "/actuator/health"))
                 .cors(cors -> {})
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(errors -> errors
@@ -36,8 +40,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/public-works/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/public-works/assistant").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/public-works/projects", "/api/public-works/work-orders",
-                                "/api/public-works/crews", "/api/public-works/street-closures").hasRole("PERSONAL_OBRAS")
+                                "/api/public-works/crews", "/api/public-works/street-closures", "/api/public-works/street-closures/integration",
+                                "/api/public-works/tickets/{ticketId}/updates").hasRole("PERSONAL_OBRAS")
                         .requestMatchers(HttpMethod.PUT, "/api/public-works/projects/{id}",
                                 "/api/public-works/work-orders/{id}").hasRole("PERSONAL_OBRAS")
                         .requestMatchers(HttpMethod.PATCH, "/api/public-works/projects/{id}/submit-approval").hasRole("PERSONAL_OBRAS")
@@ -55,9 +61,13 @@ public class SecurityConfig {
 
     private static void writeError(HttpServletResponse response, int status, String message, String code) throws IOException {
         response.setStatus(status);
-        response.setContentType("application/json");
+        response.setContentType("application/problem+json");
         response.setCharacterEncoding("UTF-8");
         // Both strings are fixed server constants, never request input.
-        response.getWriter().write("{\"message\":\"" + message + "\",\"code\":\"" + code + "\",\"details\":[]}");
+        response.getWriter().write("{\"type\":\"https://obras.municipalidad.example/problems/" +
+                code.toLowerCase(java.util.Locale.ROOT).replace('_', '-') +
+                "\",\"title\":\"" + (status == 401 ? "Unauthorized" : "Forbidden") +
+                "\",\"status\":" + status + ",\"detail\":\"" + message +
+                "\",\"message\":\"" + message + "\",\"code\":\"" + code + "\",\"details\":[]}");
     }
 }

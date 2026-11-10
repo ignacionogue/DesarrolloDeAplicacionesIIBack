@@ -8,6 +8,8 @@ import java.util.Locale;
 public class AppUser {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Column(nullable = false, unique = true, updatable = false)
+    private java.util.UUID integrationId = java.util.UUID.randomUUID();
     @Column(nullable = false, unique = true, length = 100)
     private String username;
     @Column(nullable = false, length = 100)
@@ -29,6 +31,7 @@ public class AppUser {
 
     public static String canonicalUsername(String value) { return value.trim().toLowerCase(Locale.ROOT); }
     public Long getId() { return id; }
+    public java.util.UUID getIntegrationId() { return integrationId; }
     public String getUsername() { return username; }
     public String getPasswordHash() { return passwordHash; }
     public String getRole() { return role; }

@@ -1,0 +1,39 @@
+{
+  "eventId": "6f2cd81f-3593-46ff-b9ed-9896dc4f157c",
+  "eventType": "updateTicketStatus",
+  "eventVersion": "1.0",
+  "occurredAt": "2026-10-20T11:45:03-03:00",
+  "sourceModule": "obras",
+  "correlationId": "31b1e59e-17c3-401d-b996-8be08f8c3530",
+  "causationId": null,
+  "data": {
+    "ticketId": "550e8400-e29b-41d4-a716-446655440000",
+    "updateType": "RESOLVED",
+    "publicMessage": "El bache fue reparado y la calzada quedó habilitada.",
+    "internalMessage": "Se rellenó con mezcla asfáltica en frío (0,3 m3) y se compactó.",
+    "details": {
+      "resolution": {
+        "type": "ACTION_COMPLETED"
+      }
+    },
+    "attachments": [
+      {
+        "fileName": "reparacion-antes.jpg",
+        "contentType": "image/jpeg",
+        "url": "https://obras.municipalidad-uade.example/evidencias/reparacion-antes.jpg?token=eyJ0ZW1wIjoiMSJ9",
+        "sizeBytes": 245100
+      },
+      {
+        "fileName": "reparacion-despues.jpg",
+        "contentType": "image/jpeg",
+        "url": "https://obras.municipalidad-uade.example/evidencias/reparacion-despues.jpg?token=eyJ0ZW1wIjoiMSJ9",
+        "sizeBytes": 251904
+      }
+    ],
+    "updatedBy": {
+      "type": "EXTERNAL_USER",
+      "id": "3b9f1c52-6a7e-4d08-9c41-5e2a8d7f0b13"
+    },
+    "updateOccurredAt": "2026-10-20T11:45:00-03:00"
+  }
+}

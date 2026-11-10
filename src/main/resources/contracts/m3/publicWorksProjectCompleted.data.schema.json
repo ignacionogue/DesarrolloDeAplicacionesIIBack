@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://m3.obras/contracts/publicWorksProjectCompleted.data.schema.json",
+  "title": "publicWorksProjectCompleted data v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["publicWorksProjectId", "projectNumber", "completedAt"],
+  "properties": {
+    "publicWorksProjectId": {"type": "string", "format": "uuid"},
+    "projectNumber": {"type": "string", "minLength": 1, "maxLength": 80},
+    "completedAt": {"type": "string", "format": "date-time"},
+    "finalBudget": {"type": "number", "minimum": 0},
+    "caseFileId": {"type": "string", "format": "uuid", "description": "Present only after M1 linked a case file to the project."}
+  }
+}

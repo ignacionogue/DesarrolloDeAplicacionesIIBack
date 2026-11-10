@@ -27,7 +27,8 @@ La aplicación no incluye credenciales ni valores alternativos de conexión.
 Opcionales: `PORT` (prioridad), `SERVER_PORT` (8080), `DB_POOL_MAX_SIZE` (5),
 `DB_POOL_MIN_IDLE` (0), `DB_CONNECTION_TIMEOUT_MS` (10000),
 `CORS_ALLOWED_ORIGINS` (localhost 3000/5173), `APP_DEMO_ENABLED` (false),
-`AUTH_ROLE` (`PERSONAL_OBRAS`) y `JWT_EXPIRATION_MINUTES` (480).
+`AUTH_ROLE` (`PERSONAL_OBRAS`), `JWT_EXPIRATION_MINUTES` (480),
+`LOGIN_RATE_LIMIT_MAX_ATTEMPTS` (10) y `LOGIN_RATE_LIMIT_WINDOW_SECONDS` (60).
 La carga demo solo inserta catálogos vacíos; no crea tablas ni simula respuestas
 de otros módulos. Para acceso del front por `/api/...` bajo el mismo origen,
 el enrutamiento corresponde a DevOps; no se necesita una URL de backend en el front.
@@ -57,6 +58,17 @@ Hibernate valida el esquema. Para bases preexistentes leer
 - `GET /actuator/health`: health/probes de infraestructura existentes.
 - `GET /swagger-ui/index.html`: documentación interactiva.
 - `GET /v3/api-docs`: OpenAPI generado desde la versión ejecutada.
+- `POST /api/public-works/assistant`: asistente acotado al dominio de Obras. Usa
+  `AI_GATEWAY_URL` y `AI_GATEWAY_API_KEY` como secretos opcionales; ante timeout,
+  error o proveedor caído responde un fallback seguro en menos de cinco segundos.
+
+Los recursos individuales de proyectos y órdenes devuelven `ETag`. Los comandos
+aceptan `If-Match` y responden 412 si la versión quedó obsoleta. Los POST de negocio
+aceptan `Idempotency-Key`: repetir la misma clave y cuerpo devuelve la respuesta
+persistida sin duplicar efectos; reutilizarla con otro cuerpo devuelve 409. Los
+errores HTTP usan `application/problem+json` y mantienen `message`, `code` y
+`details` para compatibilidad. El login limita intentos y devuelve 429 con
+`Retry-After` al superar la ventana configurada.
 
 ## Pruebas y empaquetado
 

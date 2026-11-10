@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://municipalidad-uade.example/m2/events/v1.78/event.schema.json",
+  "title": "Evento del contrato M2 (despachador por eventType)",
+  "description": "Punto de entrada para consumidores: elige el schema según eventType (la cola del módulo trae varios tipos y hay que despachar por eventType, FAQ Core #13). Valida el sobre del Core y después la variante de data.",
+  "type": "object",
+  "required": [
+    "eventType"
+  ],
+  "properties": {
+    "eventType": {
+      "enum": [
+        "ticketCreated",
+        "ticketUpdated",
+        "updateTicketStatus"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "ticketCreated"
+          }
+        },
+        "required": [
+          "eventType"
+        ]
+      },
+      "then": {
+        "$ref": "ticketCreated.schema.json"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "ticketUpdated"
+          }
+        },
+        "required": [
+          "eventType"
+        ]
+      },
+      "then": {
+        "$ref": "ticketUpdated.schema.json"
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "eventType": {
+            "const": "updateTicketStatus"
+          }
+        },
+        "required": [
+          "eventType"
+        ]
+      },
+      "then": {
+        "$ref": "updateTicketStatus.schema.json"
+      }
+    }
+  ]
+}

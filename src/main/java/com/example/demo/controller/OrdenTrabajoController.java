@@ -37,50 +37,62 @@ public class OrdenTrabajoController {
 
     @GetMapping("/{id}")
     public ResponseEntity<OrdenTrabajoResponse> obtenerPorId(@PathVariable Long id) {
-        return ResponseEntity.ok(service.obtenerPorId(id));
+        return versioned(service.obtenerPorId(id));
     }
 
     @PostMapping
     public ResponseEntity<OrdenTrabajoResponse> crear(@Valid @RequestBody OrdenTrabajoRequest request) {
-        return ResponseEntity.status(201).body(service.crear(request));
+        OrdenTrabajoResponse body = service.crear(request);
+        return ResponseEntity.status(201).eTag(EtagPreconditions.value(body.version())).body(body);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<OrdenTrabajoResponse> actualizar(@PathVariable Long id,
-                                                            @Valid @RequestBody OrdenTrabajoRequest request) {
-        return ResponseEntity.ok(service.actualizar(id, request));
+                                                            @Valid @RequestBody OrdenTrabajoRequest request,
+                                                            @RequestHeader(value = "If-Match", required = false) String ifMatch) {
+        return versioned(service.actualizar(id, request, EtagPreconditions.parse(ifMatch)));
     }
 
     @PatchMapping("/{id}/schedule")
     @Operation(summary = "Programar/reprogramar PENDIENTE, PROGRAMADA o ASIGNADA; crew omitido conserva la cuadrilla")
     public ResponseEntity<OrdenTrabajoResponse> programar(@PathVariable Long id,
-                                                           @Valid @RequestBody ScheduleOTRequest request) {
-        return ResponseEntity.ok(service.programar(id, request));
+                                                           @Valid @RequestBody ScheduleOTRequest request,
+                                                           @RequestHeader(value = "If-Match", required = false) String ifMatch) {
+        return versioned(service.programar(id, request, EtagPreconditions.parse(ifMatch)));
     }
 
     @PatchMapping("/{id}/start")
     @Operation(summary = "PROGRAMADA/ASIGNADA/PAUSADA/REABIERTA -> EN_EJECUCION")
-    public ResponseEntity<OrdenTrabajoResponse> iniciar(@PathVariable Long id) {
-        return ResponseEntity.ok(service.iniciar(id));
+    public ResponseEntity<OrdenTrabajoResponse> iniciar(@PathVariable Long id,
+            @RequestHeader(value = "If-Match", required = false) String ifMatch) {
+        return versioned(service.iniciar(id, EtagPreconditions.parse(ifMatch)));
     }
 
     @PatchMapping("/{id}/pause")
     @Operation(summary = "EN_EJECUCION -> PAUSADA")
-    public ResponseEntity<OrdenTrabajoResponse> pausar(@PathVariable Long id) {
-        return ResponseEntity.ok(service.pausar(id));
+    public ResponseEntity<OrdenTrabajoResponse> pausar(@PathVariable Long id,
+            @RequestHeader(value = "If-Match", required = false) String ifMatch) {
+        return versioned(service.pausar(id, EtagPreconditions.parse(ifMatch)));
     }
 
     @PatchMapping("/{id}/complete")
     @Operation(summary = "EN_EJECUCION/PAUSADA -> COMPLETADA")
     public ResponseEntity<OrdenTrabajoResponse> completar(@PathVariable Long id,
-                                                           @Valid @RequestBody(required = false) CompleteOTRequest request) {
-        return ResponseEntity.ok(service.completar(id, request != null ? request : new CompleteOTRequest()));
+                                                           @Valid @RequestBody(required = false) CompleteOTRequest request,
+                                                           @RequestHeader(value = "If-Match", required = false) String ifMatch) {
+        return versioned(service.completar(id, request != null ? request : new CompleteOTRequest(),
+                EtagPreconditions.parse(ifMatch)));
     }
 
     @PatchMapping("/{id}/validate")
     @Operation(summary = "COMPLETADA -> VALIDADA (approved=true) o REABIERTA (approved=false)")
     public ResponseEntity<OrdenTrabajoResponse> validar(@PathVariable Long id,
-                                                         @Valid @RequestBody ValidateOTRequest request) {
-        return ResponseEntity.ok(service.validar(id, request));
+                                                         @Valid @RequestBody ValidateOTRequest request,
+                                                         @RequestHeader(value = "If-Match", required = false) String ifMatch) {
+        return versioned(service.validar(id, request, EtagPreconditions.parse(ifMatch)));
+    }
+
+    private static ResponseEntity<OrdenTrabajoResponse> versioned(OrdenTrabajoResponse body) {
+        return ResponseEntity.ok().eTag(EtagPreconditions.value(body.version())).body(body);
     }
 }

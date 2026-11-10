@@ -1,0 +1,26 @@
+{
+  "eventId": "4a2620ce-01b9-4bfe-8cf3-a36d122cf695",
+  "eventType": "ticketUpdated",
+  "eventVersion": "1.0",
+  "occurredAt": "2026-10-06T12:00:02-03:00",
+  "sourceModule": "atencion-ciudadana",
+  "correlationId": "196eb4be-e468-4016-8ec7-eab6a50a8856",
+  "causationId": null,
+  "data": {
+    "ticketId": "550e8400-e29b-41d4-a716-446655440000",
+    "publicId": "TK-2026-000123",
+    "citizenId": "8f14e45f-ea5e-4e5d-bd3f-1c71f4f6a001",
+    "isAnonymous": false,
+    "responsibleAreaId": "M3",
+    "updateType": "DUPLICATE_LINKED",
+    "currentStatus": "DUPLICATE",
+    "currentPriority": "MEDIUM",
+    "publicMessage": "Tu reclamo se vinculó a otro ya registrado para el mismo problema.",
+    "details": {
+      "duplicate": {
+        "mainTicketId": "3b241101-e2bb-4255-8caf-4136c566a962"
+      }
+    },
+    "updatedAt": "2026-10-06T12:00:00-03:00"
+  }
+}

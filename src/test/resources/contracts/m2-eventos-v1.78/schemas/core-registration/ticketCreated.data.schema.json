@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://m2.municipalidad.example/schemas/ticketCreated.data.core.v1.78.schema.json",
+  "title": "ticketCreated · data",
+  "description": "Sólo el objeto data de ticketCreated. Sirve para registrarlo como jsonSchema del tipo de evento en el Core (si el Core valida data) y para validar el payload por separado. Ver ticketCreated.schema.json para el evento completo. Schema autocontenido, apto para registrar directamente el objeto data en Core; verificar que Core lo aplique sobre data.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ticketId",
+    "publicId",
+    "citizenId",
+    "isAnonymous",
+    "requestType",
+    "category",
+    "subcategory",
+    "ticketType",
+    "summary",
+    "description",
+    "status",
+    "priority",
+    "responsibleAreaId",
+    "createdAt"
+  ],
+  "properties": {
+    "ticketId": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "publicId": {
+      "type": "string",
+      "pattern": "^TK-\\d{4}-\\d{6}$",
+      "description": "Referencia humana TK-AAAA-NNNNNN (Decisiones §1). No es credencial."
+    },
+    "citizenId": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "isAnonymous": {
+      "const": false,
+      "description": "ticketCreated no se publica para tickets anónimos."
+    },
+    "requestType": {
+      "type": "string",
+      "pattern": "\\S",
+      "description": "Texto no vacío (al menos un carácter que no sea espacio)."
+    },
+    "category": {
+      "type": "string",
+      "pattern": "\\S",
+      "description": "Texto no vacío (al menos un carácter que no sea espacio)."
+    },
+    "subcategory": {
+      "type": "string",
+      "pattern": "\\S",
+      "description": "Texto no vacío (al menos un carácter que no sea espacio)."
+    },
+    "ticketType": {
+      "enum": [
+        "COMPLAINT",
+        "REQUEST",
+        "INQUIRY",
+        "SUGGESTION"
+      ]
+    },
+    "summary": {
+      "allOf": [
+        {
+          "type": "string",
+          "pattern": "\\S",
+          "description": "Texto no vacío (al menos un carácter que no sea espacio)."
+        },
+        {
+          "maxLength": 200
+        }
+      ]
+    },
+    "description": {
+      "type": "string",
+      "pattern": "\\S",
+      "description": "Texto no vacío (al menos un carácter que no sea espacio)."
+    },
+    "formData": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Respuestas dinámicas del formulario. Puede ser {} y puede contener null como respuesta explícita 'No sé/No responde'."
+    },
+    "status": {
+      "const": "REGISTERED"
+    },
+    "priority": {
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH",
+        "CRITICAL"
+      ]
+    },
+    "responsibleAreaId": {
+      "type": "string",
+      "pattern": "^M[1-9]$",
+      "description": "Código de módulo/área M1…M9 usado DENTRO de data (responsibleAreaId). Equivalencia con el sourceModule del Core: M1 ciudadanos · M2 atencion-ciudadana · M3 obras · M4 habilitaciones · M5 rentas · M6 ambiente · M7 transito · M8 desarrollo-social · M9 core."
+    },
+    "location": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "addressLine": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "\\S",
+                  "description": "Texto no vacío (al menos un carácter que no sea espacio)."
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "street": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "\\S",
+                  "description": "Texto no vacío (al menos un carácter que no sea espacio)."
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "streetNumber": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "\\S",
+                  "description": "Texto no vacío (al menos un carácter que no sea espacio)."
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "neighborhoodId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "reference": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "\\S",
+                  "description": "Texto no vacío (al menos un carácter que no sea espacio)."
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "description": "No incluye latitud/longitud: las coordenadas son internas de M2 (Decisiones §7)."
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "resolutionDueAt": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$",
+          "description": "ISO 8601 con UTC (Z) u offset explícito (§4 y §12). No se acepta fecha sin zona horaria."
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "fileName",
+          "contentType",
+          "url"
+        ],
+        "properties": {
+          "fileName": {
+            "type": "string",
+            "pattern": "\\S",
+            "description": "Texto no vacío (al menos un carácter que no sea espacio)."
+          },
+          "contentType": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9!#$&^_.+-]+/[A-Za-z0-9!#$&^_.+-]+$",
+            "description": "MIME type, por ejemplo image/jpeg o application/pdf."
+          },
+          "url": {
+            "allOf": [
+              {
+                "type": "string",
+                "pattern": "\\S",
+                "description": "Texto no vacío (al menos un carácter que no sea espacio)."
+              },
+              {
+                "description": "Referencia segura o URL temporal/autorizada que M2 pueda descargar. Nunca se envía el binario."
+              }
+            ]
+          },
+          "sizeBytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          }
+        }
+      },
+      "description": "Sólo archivos nuevos o relevantes para ESTA actualización; no se reenvía el historial."
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$",
+      "description": "ISO 8601 con UTC (Z) u offset explícito (§4 y §12). No se acepta fecha sin zona horaria."
+    }
+  }
+}

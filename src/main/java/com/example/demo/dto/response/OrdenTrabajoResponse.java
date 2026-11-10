@@ -16,6 +16,7 @@ public record OrdenTrabajoResponse(
         Integer estimatedDurationHours,
         boolean hasEvidence,
         String outcome,
-        Long projectId
+        Long projectId,
+        long version
 ) {
 }

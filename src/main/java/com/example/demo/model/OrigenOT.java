@@ -5,5 +5,6 @@ public enum OrigenOT {
     MANUAL,
     PROYECTO,
     ATENCION_CIUDADANA,
-    INSPECCION
+    INSPECCION,
+    AMBIENTE
 }
