@@ -58,9 +58,11 @@ Hibernate valida el esquema. Para bases preexistentes leer
 - `GET /actuator/health`: health/probes de infraestructura existentes.
 - `GET /swagger-ui/index.html`: documentación interactiva.
 - `GET /v3/api-docs`: OpenAPI generado desde la versión ejecutada.
-- `POST /api/public-works/assistant`: asistente acotado al dominio de Obras. Usa
-  `AI_GATEWAY_URL` y `AI_GATEWAY_API_KEY` como secretos opcionales; ante timeout,
-  error o proveedor caído responde un fallback seguro en menos de cinco segundos.
+- `POST /api/public-works/assistant/triage`: clasificación asistida y revisable.
+  Por defecto usa el baseline `mock`; con `AI_PROVIDER=gemini` requiere
+  `GEMINI_API_KEY` como secreto y `GEMINI_MODEL`. Solo envía texto saneado y exige
+  JSON estructurado. Ante timeout, error o proveedor caído responde un fallback
+  manual seguro. `AI_TRIAGE_ENABLED=false` apaga la función sin afectar el flujo.
 
 Los recursos individuales de proyectos y órdenes devuelven `ETag`. Los comandos
 aceptan `If-Match` y responden 412 si la versión quedó obsoleta. Los POST de negocio

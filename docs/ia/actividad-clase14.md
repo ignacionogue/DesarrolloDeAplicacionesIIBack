@@ -2,7 +2,7 @@
 
 **Grupo:** 5 — M3 Obras Públicas  
 **Feature propuesta:** Copiloto de clasificación de incidencias  
-**Estado:** diseño `PROPOSED`, deshabilitado por defecto; no forma parte todavía del runtime productivo.
+**Estado:** implementado; deshabilitado por defecto y habilitable en Azure Test mediante configuración segura.
 
 ## 1. Propósito y alcance
 
@@ -12,11 +12,11 @@ Usuarios: Personal de Obras e Ingeniero/Arquitecto. No se expone al ciudadano. B
 
 ## 2. Arquitectura
 
-`Frontend → WorkOrderSuggestionService → AIGateway → OpenAIAdapter → Responses API`
+`Frontend → IncidentTriageController → IncidentTriageService → IncidentTriageGateway → Gemini REST API`
 
 Componentes transversales: `PromptRepository`, sanitizador de PII, validador JSON Schema, métricas, timeout de 5 segundos, circuit breaker, fallback manual y feature flag `AI_TRIAGE_ENABLED=false`.
 
-Modelo propuesto: `gpt-6-luna`, `reasoning.effort=none`, temperatura/configuración fija y prompt `incident-triage.v1`. La selección se justifica por ser una tarea frecuente y acotada de clasificación. Antes de habilitarla se debe registrar la versión efectiva devuelta por el proveedor y repetir el eval set ante cualquier cambio de modelo, prompt o parámetros.
+Modelo configurado en Test: alias `gemini-3.5-flash`, nivel de pensamiento mínimo, respuesta JSON estructurada y prompt `incident-triage.v1`. El smoke test informó `gemini-3.6-flash` como versión efectiva. Se mantiene `mock-v1` para evaluaciones deterministas y CI. Ante cualquier cambio de modelo, prompt o parámetros se repite el eval set.
 
 ## 3. Contrato
 

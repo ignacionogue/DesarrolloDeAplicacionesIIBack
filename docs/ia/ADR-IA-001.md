@@ -4,9 +4,9 @@ Estado: ACCEPTED e implementado. Fecha: 11/11/2026. Responsables de aceptación:
 
 La interpretación de reclamos en texto libre puede beneficiarse de IA, pero una clasificación errónea puede afectar la atención. Se elige una sugerencia revisable, nunca una acción administrativa automática.
 
-Para la entrega se propone un proveedor simulado determinista, versión mock-v1, detrás de AiGateway. Una alternativa futura es un proveedor LLM HTTP reemplazable. La propuesta anterior de un modelo comercial permanece sin habilitar: modelo y versión concretos requieren disponibilidad, privacidad, presupuesto y evaluación antes de aprobarse. No se afirma haber contratado ni probado ese modelo.
+Se implementan dos adaptadores detrás de `IncidentTriageGateway`: el baseline determinista `mock-v1` para CI y una integración HTTPS con Gemini para Azure Test. La configuración actual usa el alias `gemini-3.5-flash`; el smoke test del 11/11/2026 informó como versión efectiva `gemini-3.6-flash`. El proveedor puede variar la versión detrás del alias, por lo que el equipo debe repetir evaluaciones ante cambios observados.
 
-El gateway concentra prompt versionado, validación y resiliencia; el adaptador traduce el protocolo. Evita acoplar negocio a un SDK. No se agrega una dependencia ni clave para esta entrega. Costo de inferencia del mock: cero; no implica costo cero de desarrollo o infraestructura. Para un proveedor real se estimará solicitudes × (tokens de entrada × tarifa de entrada + tokens de salida × tarifa de salida), usando tarifas verificadas al decidir.
+El gateway concentra prompt versionado, validación y resiliencia; el adaptador traduce el protocolo REST sin acoplar negocio a un SDK. La API key se inyecta como secreto y nunca se versiona. El mock no tiene costo de inferencia; Gemini puede consumir cuota o generar costo según el plan de la clave. El límite por usuario, el apagado y la salida acotada reducen el consumo accidental.
 
 Alternativas: reglas deterministas son económicas y útiles como baseline, pero cubren menos variantes; integración directa con SDK acopla negocio y proveedor; decisiones autónomas se descartan por impacto y falta de supervisión.
 
@@ -16,4 +16,4 @@ Privacidad: enviar únicamente texto saneado; no reutilizar datos reales en eval
 
 Confirmación humana obligatoria: tipo definitivo, prioridad definitiva, creación y aprobación de obra, asignación de recursos y ejecución. El modelo no posee herramientas para estas operaciones.
 
-Apagado futuro: AI_TRIAGE_ENABLED=false evita llamadas y conserva selección manual. Apagado disponible hoy: AI_GATEWAY_URL vacía. El mock permite demostrar integración y fallos sin dinero ni datos externos; no demuestra calidad de un LLM real. Antes de habilitarlo se exige eval set aprobado, revisión humana y CI verde.
+Apagado: `AI_TRIAGE_ENABLED=false` evita llamadas y conserva selección manual. `AI_PROVIDER=mock` permite volver al baseline sin retirar código. Si Gemini falla, el timeout, circuit breaker y fallback devuelven revisión manual; no se ejecutan acciones de negocio.
