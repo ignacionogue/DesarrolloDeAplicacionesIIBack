@@ -3,6 +3,7 @@ package com.example.demo.infrastructure.ai;
 import com.example.demo.application.ai.IncidentTriageGateway;
 import com.example.demo.application.ai.VersionedPromptRepository;
 import com.example.demo.dto.response.IncidentTriageSuggestion;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.ClassPathResource;
@@ -31,6 +32,7 @@ public class GeminiIncidentTriageGateway implements IncidentTriageGateway {
     private final URI endpoint;
     private final JsonNode providerSchema;
 
+    @Autowired
     public GeminiIncidentTriageGateway(ObjectMapper json,
                                        VersionedPromptRepository prompts,
                                        @Value("${app.ai.gemini.api-key:}") String apiKey,
