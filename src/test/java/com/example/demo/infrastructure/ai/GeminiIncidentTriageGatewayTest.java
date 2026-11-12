@@ -55,6 +55,9 @@ class GeminiIncidentTriageGatewayTest {
     @Test
     void rejectsProviderErrorsAndMissingSecret() throws Exception {
         assertThrows(IllegalStateException.class, () -> gateway(" "));
+        assertThrows(IllegalStateException.class, () -> new GeminiIncidentTriageGateway(
+                new ObjectMapper(), new VersionedPromptRepository(), "key", " ",
+                "http://localhost:1", java.net.http.HttpClient.newHttpClient()));
 
         server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/models/gemini-test:generateContent", exchange -> {
@@ -69,6 +72,36 @@ class GeminiIncidentTriageGatewayTest {
                 () -> gateway("test-secret").suggest("Bache", "incident-triage.v1"));
         assertEquals("Gemini devolvio HTTP 503", failure.getMessage());
         assertFalse(failure.getMessage().contains("test-secret"));
+    }
+
+    @Test
+    void rejectsIncompleteEmptyAndMalformedResponses() throws Exception {
+        assertProviderFailure("{\"candidates\":[{\"finishReason\":\"MAX_TOKENS\"}]}",
+                "Gemini no completo la respuesta estructurada");
+        assertProviderFailure("{\"candidates\":[{\"finishReason\":\"STOP\",\"content\":{\"parts\":[{\"text\":\"\"}]}}]}",
+                "Gemini devolvio una respuesta vacia");
+        assertProviderFailure("not-json", "Gemini devolvio JSON invalido");
+    }
+
+    @Test
+    void rejectsMalformedStructuredSuggestion() throws Exception {
+        assertProviderFailure("{\"candidates\":[{\"finishReason\":\"STOP\",\"content\":{\"parts\":[{\"text\":\"{bad}\"}]}}]}",
+                "Gemini devolvio JSON invalido");
+    }
+
+    private void assertProviderFailure(String responseBody, String expectedMessage) throws Exception {
+        if (server != null) server.stop(0);
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        server.createContext("/models/gemini-test:generateContent", exchange -> {
+            byte[] response = responseBody.getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, response.length);
+            exchange.getResponseBody().write(response);
+            exchange.close();
+        });
+        server.start();
+        var failure = assertThrows(IllegalStateException.class,
+                () -> gateway("test-secret").suggest("Bache", "incident-triage.v1"));
+        assertEquals(expectedMessage, failure.getMessage());
     }
 
     private GeminiIncidentTriageGateway gateway(String key) {

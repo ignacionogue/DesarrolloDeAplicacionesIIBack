@@ -81,8 +81,10 @@ public class GeminiIncidentTriageGateway implements IncidentTriageGateway {
             String text = candidate.path("content").path("parts").path(0).path("text").asText();
             if (text.isBlank()) throw new IllegalStateException("Gemini devolvio una respuesta vacia");
             return json.readValue(text, IncidentTriageSuggestion.class);
-        } catch (IOException error) {
+        } catch (tools.jackson.core.JacksonException error) {
             throw new IllegalStateException("Gemini devolvio JSON invalido", error);
+        } catch (IOException error) {
+            throw new IllegalStateException("No se pudo comunicar con Gemini", error);
         } catch (InterruptedException error) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("La llamada a Gemini fue interrumpida", error);
