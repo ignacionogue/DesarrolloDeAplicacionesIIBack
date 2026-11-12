@@ -3,6 +3,8 @@ package com.example.demo.infrastructure.ai;
 import com.example.demo.application.ai.IncidentTextSanitizer;
 import com.example.demo.application.ai.IncidentTriageGateway;
 import com.example.demo.dto.response.IncidentTriageSuggestion;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -13,6 +15,8 @@ import static com.example.demo.dto.response.IncidentTriageSuggestion.SuggestedPr
 
 /** Deterministic delivery provider. It has no network, API key or side effects. */
 @Component
+@Primary
+@ConditionalOnProperty(name = "app.ai.provider", havingValue = "mock", matchIfMissing = true)
 public class DeterministicIncidentTriageGateway implements IncidentTriageGateway {
     private final IncidentTextSanitizer sanitizer;
 

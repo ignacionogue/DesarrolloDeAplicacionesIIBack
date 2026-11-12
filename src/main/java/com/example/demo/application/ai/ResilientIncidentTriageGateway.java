@@ -1,7 +1,6 @@
 package com.example.demo.application.ai;
 
 import com.example.demo.dto.response.IncidentTriageSuggestion;
-import com.example.demo.infrastructure.ai.DeterministicIncidentTriageGateway;
 import jakarta.annotation.PreDestroy;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,7 +26,7 @@ public class ResilientIncidentTriageGateway {
     private final AtomicReference<Instant> openUntil = new AtomicReference<>();
 
     @Autowired
-    public ResilientIncidentTriageGateway(DeterministicIncidentTriageGateway delegate,
+    public ResilientIncidentTriageGateway(IncidentTriageGateway delegate,
                                           IncidentTriageMetrics metrics,
                                           @Value("${app.ai.timeout-ms:5000}") long timeoutMs,
                                           @Value("${app.ai.circuit-breaker.failure-threshold:5}") int failureThreshold,
