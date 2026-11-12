@@ -22,8 +22,13 @@ class IncidentTriageEvalTests {
 
     @Test
     void goldenDatasetMeetsEveryQualityAndSafetyThreshold() throws Exception {
-        JsonNode dataset = json.readTree(Files.readString(
-                Path.of("docs/ia/evals/incident-triage-v1.json")));
+        try (var datasetStream = getClass().getResourceAsStream("/ai/evals/incident-triage-v1.json")) {
+            assertNotNull(datasetStream, "El dataset versionado debe estar empaquetado como recurso de prueba");
+            runDataset(json.readTree(datasetStream));
+        }
+    }
+
+    private void runDataset(JsonNode dataset) throws Exception {
         List<Object> results = new ArrayList<>();
         int schemaValid = 0;
         int categoryCorrect = 0;
