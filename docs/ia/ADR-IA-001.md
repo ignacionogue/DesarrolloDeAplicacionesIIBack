@@ -1,6 +1,6 @@
 # ADR-IA-001: clasificación asistida mediante gateway
 
-Estado: PROPOSED. Fecha: 11/11/2026. Responsables de aceptación: equipo M3.
+Estado: ACCEPTED e implementado. Fecha: 11/11/2026. Responsables de aceptación: equipo M3.
 
 La interpretación de reclamos en texto libre puede beneficiarse de IA, pero una clasificación errónea puede afectar la atención. Se elige una sugerencia revisable, nunca una acción administrativa automática.
 

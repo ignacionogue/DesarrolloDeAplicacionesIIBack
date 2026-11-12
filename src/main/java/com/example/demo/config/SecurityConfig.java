@@ -1,6 +1,7 @@
 package com.example.demo.config;
 
 import com.example.demo.security.JwtAuthenticationFilter;
+import com.example.demo.security.IncidentTriageRateLimitFilter;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,7 +22,8 @@ public class SecurityConfig {
 
     @Bean
     @SuppressWarnings("java:S4502") // Stateless bearer-JWT API: no browser cookie carries authentication.
-    SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthenticationFilter,
+                                            IncidentTriageRateLimitFilter incidentTriageRateLimitFilter) throws Exception {
         return http
                 // The REST API is stateless and authenticates exclusively with a bearer JWT.
                 // Keep CSRF enabled for any future browser/session endpoint and exclude only
@@ -41,6 +43,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/public-works/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/public-works/assistant").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/public-works/assistant/triage")
+                                .hasAnyRole("PERSONAL_OBRAS", "INGENIERO_ARQUITECTO")
                         .requestMatchers(HttpMethod.POST, "/api/public-works/projects", "/api/public-works/work-orders",
                                 "/api/public-works/crews", "/api/public-works/street-closures", "/api/public-works/street-closures/integration",
                                 "/api/public-works/tickets/{ticketId}/updates").hasRole("PERSONAL_OBRAS")
@@ -56,6 +60,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/**").denyAll()
                         .anyRequest().permitAll())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(incidentTriageRateLimitFilter, JwtAuthenticationFilter.class)
                 .build();
     }
 

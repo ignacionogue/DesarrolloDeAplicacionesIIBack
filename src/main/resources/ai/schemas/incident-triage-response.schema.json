@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://m3-obras.example/schemas/incident-triage-response.schema.json",
+  "title": "IncidentTriageSuggestion",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["summary", "damageCategory", "suggestedPriority", "recommendedResourceType", "confidence", "humanReviewRequired", "reasons"],
+  "properties": {
+    "summary": {"type": "string", "minLength": 1, "maxLength": 240},
+    "damageCategory": {"type": "string", "enum": ["PAVEMENT", "SIDEWALK", "STREETLIGHT", "DRAINAGE", "STRUCTURE", "TREE", "OTHER"]},
+    "suggestedPriority": {"type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]},
+    "recommendedResourceType": {"type": "string", "enum": ["ROAD_CREW", "SIDEWALK_CREW", "ELECTRICAL_CREW", "DRAINAGE_CREW", "STRUCTURAL_INSPECTION", "ARBORIST", "MANUAL_REVIEW"]},
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "humanReviewRequired": {"const": true},
+    "reasons": {"type": "array", "minItems": 1, "maxItems": 3, "items": {"type": "string", "minLength": 1, "maxLength": 160}}
+  }
+}
