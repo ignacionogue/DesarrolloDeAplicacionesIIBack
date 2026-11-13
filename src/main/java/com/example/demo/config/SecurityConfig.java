@@ -53,6 +53,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, "/api/public-works/projects/{id}/submit-approval").hasRole("PERSONAL_OBRAS")
                         .requestMatchers(HttpMethod.PATCH, "/api/public-works/projects/{id}/approve",
                                 "/api/public-works/projects/{id}/reject").hasRole("RESPONSABLE_AUTORIZADO")
+                        .requestMatchers(HttpMethod.PATCH, "/api/public-works/projects/{id}/complete")
+                                .hasRole("RESPONSABLE_AUTORIZADO")
                         .requestMatchers(HttpMethod.PATCH, "/api/public-works/work-orders/{id}/schedule",
                                 "/api/public-works/work-orders/{id}/start", "/api/public-works/work-orders/{id}/pause").hasRole("JEFE_CUADRILLA")
                         .requestMatchers(HttpMethod.PATCH, "/api/public-works/work-orders/{id}/complete").hasRole("OPERARIO_CONTRATISTA")

@@ -14,6 +14,8 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.util.ContentCachingResponseWrapper;
 
@@ -29,9 +31,11 @@ import java.util.HexFormat;
 @Order(Ordered.LOWEST_PRECEDENCE - 20)
 public class IdempotencyKeyFilter extends OncePerRequestFilter {
     private final JdbcTemplate jdbc;
+    private final TransactionTemplate transaction;
 
-    public IdempotencyKeyFilter(JdbcTemplate jdbc) {
+    public IdempotencyKeyFilter(JdbcTemplate jdbc, PlatformTransactionManager transactionManager) {
         this.jdbc = jdbc;
+        this.transaction = new TransactionTemplate(transactionManager);
     }
 
     @Override
@@ -60,8 +64,24 @@ public class IdempotencyKeyFilter extends OncePerRequestFilter {
             replayOrReject(response, hash, stored);
             return;
         }
+        ContentCachingResponseWrapper cachedResponse = new ContentCachingResponseWrapper(response);
         try {
-            jdbc.update("INSERT INTO rest_idempotency(request_scope,request_hash) VALUES (?,?)", scope, hash);
+            transaction.executeWithoutResult(status -> {
+                jdbc.update("INSERT INTO rest_idempotency(request_scope,request_hash) VALUES (?,?)", scope, hash);
+                try {
+                    chain.doFilter(cachedRequest, cachedResponse);
+                } catch (IOException | ServletException failure) {
+                    throw new FilterFailure(failure);
+                }
+                byte[] body = cachedResponse.getContentAsByteArray();
+                if (cachedResponse.getStatus() < 500) {
+                    jdbc.update("UPDATE rest_idempotency SET response_status=?,response_content_type=?,response_etag=?,response_body=? WHERE request_scope=?",
+                            cachedResponse.getStatus(), cachedResponse.getContentType(), cachedResponse.getHeader("ETag"),
+                            new String(body, StandardCharsets.UTF_8), scope);
+                } else {
+                    status.setRollbackOnly();
+                }
+            });
         } catch (DuplicateKeyException concurrent) {
             stored = find(scope);
             if (stored == null || stored.status() == null) {
@@ -70,25 +90,14 @@ public class IdempotencyKeyFilter extends OncePerRequestFilter {
                 replayOrReject(response, hash, stored);
             }
             return;
-        }
-
-        ContentCachingResponseWrapper cachedResponse = new ContentCachingResponseWrapper(response);
-        try {
-            chain.doFilter(cachedRequest, cachedResponse);
-            byte[] body = cachedResponse.getContentAsByteArray();
-            if (cachedResponse.getStatus() < 500) {
-                jdbc.update("UPDATE rest_idempotency SET response_status=?,response_content_type=?,response_etag=?,response_body=? WHERE request_scope=?",
-                        cachedResponse.getStatus(), cachedResponse.getContentType(), cachedResponse.getHeader("ETag"),
-                        new String(body, StandardCharsets.UTF_8), scope);
-            } else {
-                jdbc.update("DELETE FROM rest_idempotency WHERE request_scope=?", scope);
-            }
-        } catch (RuntimeException | IOException | ServletException failure) {
-            jdbc.update("DELETE FROM rest_idempotency WHERE request_scope=?", scope);
+        } catch (FilterFailure failure) {
+            if (failure.getCause() instanceof IOException io) throw io;
+            if (failure.getCause() instanceof ServletException servlet) throw servlet;
             throw failure;
-        } finally {
-            cachedResponse.copyBodyToResponse();
+        } catch (RuntimeException failure) {
+            throw failure;
         }
+        cachedResponse.copyBodyToResponse();
     }
 
     private StoredResponse find(String scope) {
@@ -131,6 +140,10 @@ public class IdempotencyKeyFilter extends OncePerRequestFilter {
     }
 
     private record StoredResponse(String requestHash, Integer status, String contentType, String etag, String body) { }
+
+    private static final class FilterFailure extends RuntimeException {
+        private FilterFailure(Exception cause) { super(cause); }
+    }
 
     private static final class CachedBodyRequest extends HttpServletRequestWrapper {
         private final byte[] body;
