@@ -89,11 +89,12 @@ class DeliveryFourCriteriaTests {
         String key = UUID.randomUUID().toString();
         String description = "Concurrente-" + UUID.randomUUID();
         String body = "{\"origin\":\"MANUAL\",\"description\":\"" + description + "\",\"priority\":\"MEDIA\"}";
+        String token = users.issueToken("delivery-four", "PERSONAL_OBRAS");
         @SuppressWarnings("unchecked")
         CompletableFuture<HttpResponse<String>>[] requests = java.util.stream.IntStream.range(0, 4)
                 .mapToObj(i -> CompletableFuture.supplyAsync(() -> {
                     try {
-                        return call("POST", "/api/public-works/work-orders", body, "PERSONAL_OBRAS",
+                        return callWithToken("POST", "/api/public-works/work-orders", body, token,
                                 Map.of("Idempotency-Key", key));
                     } catch (Exception failure) {
                         throw new java.util.concurrent.CompletionException(failure);
@@ -153,9 +154,14 @@ class DeliveryFourCriteriaTests {
 
     private HttpResponse<String> call(String method, String path, String body, String role,
                                       Map<String, String> headers) throws Exception {
+        return callWithToken(method, path, body, users.issueToken("delivery-four", role), headers);
+    }
+
+    private HttpResponse<String> callWithToken(String method, String path, String body, String token,
+                                               Map<String, String> headers) throws Exception {
         HttpRequest.Builder request = HttpRequest.newBuilder(uri(path))
                 .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + users.issueToken("delivery-four", role));
+                .header("Authorization", "Bearer " + token);
         headers.forEach(request::header);
         return HttpClient.newHttpClient().send(request.method(method,
                         body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body)).build(),
