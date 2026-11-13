@@ -17,6 +17,7 @@ import java.net.http.HttpResponse;
 import java.time.LocalDate;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -40,7 +41,7 @@ class DeliveryFourCriteriaTests {
         assertEquals("EN_EJECUCION", order.getStatus().name());
     }
 
-    @Test void idempotencyKeyReplaysPostAndEtagRejectsStaleMutationWithProblemDetails() throws Exception {
+    @Test void idempotencyKeyReplaysPostAndEtagReturnsFreshVersionWhileRejectingStaleMutation() throws Exception {
         String key = UUID.randomUUID().toString();
         String body = "{\"origin\":\"MANUAL\",\"description\":\"Idempotencia\",\"priority\":\"ALTA\"}";
         var first = call("POST", "/api/public-works/work-orders", body, "PERSONAL_OBRAS",
@@ -65,6 +66,13 @@ class DeliveryFourCriteriaTests {
         var scheduled = call("PATCH", "/api/public-works/work-orders/" + id + "/schedule",
                 "{\"scheduledDate\":\"2026-11-17\"}", "JEFE_CUADRILLA", Map.of("If-Match", etag));
         assertEquals(200, scheduled.statusCode(), scheduled.body());
+        String freshEtag = scheduled.headers().firstValue("ETag").orElseThrow();
+        assertNotEquals(etag, freshEtag);
+        assertEquals(json.readTree(scheduled.body()).path("version").asLong(),
+                Long.parseLong(freshEtag.replace("\"", "")));
+        var started = call("PATCH", "/api/public-works/work-orders/" + id + "/start",
+                null, "JEFE_CUADRILLA", Map.of("If-Match", freshEtag));
+        assertEquals(200, started.statusCode(), started.body());
         var stale = call("PATCH", "/api/public-works/work-orders/" + id + "/start",
                 null, "JEFE_CUADRILLA", Map.of("If-Match", etag));
         assertEquals(412, stale.statusCode(), stale.body());
@@ -75,6 +83,31 @@ class DeliveryFourCriteriaTests {
         var malformed = call("PATCH", "/api/public-works/work-orders/" + id + "/start",
                 null, "JEFE_CUADRILLA", Map.of("If-Match", "not-a-version"));
         assertEquals(400, malformed.statusCode(), malformed.body());
+    }
+
+    @Test void concurrentIdempotentPostsProduceOneResourceAndReplayOneResponse() throws Exception {
+        String key = UUID.randomUUID().toString();
+        String description = "Concurrente-" + UUID.randomUUID();
+        String body = "{\"origin\":\"MANUAL\",\"description\":\"" + description + "\",\"priority\":\"MEDIA\"}";
+        @SuppressWarnings("unchecked")
+        CompletableFuture<HttpResponse<String>>[] requests = java.util.stream.IntStream.range(0, 4)
+                .mapToObj(i -> CompletableFuture.supplyAsync(() -> {
+                    try {
+                        return call("POST", "/api/public-works/work-orders", body, "PERSONAL_OBRAS",
+                                Map.of("Idempotency-Key", key));
+                    } catch (Exception failure) {
+                        throw new java.util.concurrent.CompletionException(failure);
+                    }
+                })).toArray(CompletableFuture[]::new);
+        var responses = CompletableFuture.allOf(requests).thenApply(ignored ->
+                java.util.Arrays.stream(requests).map(CompletableFuture::join).toList()).join();
+        assertTrue(responses.stream().allMatch(response -> response.statusCode() == 201), responses.toString());
+        assertEquals(1, responses.stream().map(response -> {
+            try { return json.readTree(response.body()).path("id").asLong(); }
+            catch (Exception failure) { throw new IllegalStateException(failure); }
+        }).distinct().count());
+        assertEquals(3, responses.stream().filter(response ->
+                response.headers().firstValue("Idempotency-Replayed").isPresent()).count());
     }
 
     @Test void loginBruteForceReturns429ProblemDetails() throws Exception {

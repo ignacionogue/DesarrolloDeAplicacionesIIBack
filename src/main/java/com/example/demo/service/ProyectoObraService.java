@@ -50,7 +50,7 @@ public class ProyectoObraService {
     @Transactional
     public ProyectoObraResponse crear(ProyectoObraRequest request) {
         ProyectoObra proyecto = mapper.toEntity(request);
-        return mapper.toResponse(repository.save(proyecto));
+        return mapper.toResponse(repository.saveAndFlush(proyecto));
     }
 
     @Transactional
@@ -71,7 +71,7 @@ public class ProyectoObraService {
                     "Los datos aprobados no pueden modificarse mediante la edicion general");
         }
         mapper.updateEntity(proyecto, request);
-        return mapper.toResponse(repository.save(proyecto));
+        return mapper.toResponse(repository.saveAndFlush(proyecto));
     }
 
     @Transactional
@@ -85,7 +85,7 @@ public class ProyectoObraService {
         proyecto.requireVersion(expectedVersion);
         validarTransicion(proyecto, EstadoAprobacion.BORRADOR, "enviar a aprobacion");
         proyecto.marcarPendienteAprobacion();
-        return mapper.toResponse(repository.save(proyecto));
+        return mapper.toResponse(repository.saveAndFlush(proyecto));
     }
 
     @Transactional
@@ -99,7 +99,7 @@ public class ProyectoObraService {
         proyecto.requireVersion(expectedVersion);
         validarTransicion(proyecto, EstadoAprobacion.PENDIENTE_APROBACION, "aprobar");
         proyecto.aprobar(request.approvedBudget(), request.approvedDeadlineDays(), request.approvedAt(), request.observations());
-        ProyectoObra guardado = repository.save(proyecto);
+        ProyectoObra guardado = repository.saveAndFlush(proyecto);
         eventPublisher.publishProjectApproved(guardado);
         return mapper.toResponse(guardado);
     }
@@ -124,7 +124,7 @@ public class ProyectoObraService {
             throw new BusinessRuleException("Todas las ordenes de la obra deben estar validadas");
         }
         proyecto.finalizar();
-        ProyectoObra guardado = repository.save(proyecto);
+        ProyectoObra guardado = repository.saveAndFlush(proyecto);
         eventPublisher.publishProjectCompleted(guardado);
         return mapper.toResponse(guardado);
     }
@@ -140,7 +140,7 @@ public class ProyectoObraService {
         proyecto.requireVersion(expectedVersion);
         validarTransicion(proyecto, EstadoAprobacion.PENDIENTE_APROBACION, "rechazar");
         proyecto.rechazar();
-        return mapper.toResponse(repository.save(proyecto));
+        return mapper.toResponse(repository.saveAndFlush(proyecto));
     }
 
     private void validarTransicion(ProyectoObra proyecto, EstadoAprobacion estadoRequerido, String accion) {

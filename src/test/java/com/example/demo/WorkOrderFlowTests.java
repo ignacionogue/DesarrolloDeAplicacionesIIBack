@@ -147,6 +147,7 @@ class WorkOrderFlowTests {
         "PATCH,/api/public-works/projects/1/submit-approval,PERSONAL_OBRAS",
         "PATCH,/api/public-works/projects/1/approve,RESPONSABLE_AUTORIZADO",
         "PATCH,/api/public-works/projects/1/reject,RESPONSABLE_AUTORIZADO",
+        "PATCH,/api/public-works/projects/1/complete,RESPONSABLE_AUTORIZADO",
         "POST,/api/public-works/work-orders,PERSONAL_OBRAS", "PUT,/api/public-works/work-orders/1,PERSONAL_OBRAS",
         "PATCH,/api/public-works/work-orders/1/schedule,JEFE_CUADRILLA",
         "PATCH,/api/public-works/work-orders/1/start,JEFE_CUADRILLA",
@@ -165,5 +166,11 @@ class WorkOrderFlowTests {
             assertTrue(error.get("details").isArray());
             assertFalse(error.get("message").asText().isBlank());
         }
+    }
+
+    @Test void authorizedResponsibleCanReachProjectCompletionBusinessRules() throws Exception {
+        var result = call("PATCH", "/api/public-works/projects/999999999/complete", null,
+                "RESPONSABLE_AUTORIZADO");
+        assertEquals(404, result.statusCode(), result.body());
     }
 }

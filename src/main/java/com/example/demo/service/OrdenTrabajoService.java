@@ -78,7 +78,7 @@ public class OrdenTrabajoService {
         Cuadrilla cuadrilla = resolverCuadrilla(request.getCrew());
         OrdenTrabajo ot = creationStrategies.resolve(request.getOrigin()).create(request, cuadrilla);
         eventHandlers.forEach(handler -> handler.before(ot, Action.CREATE));
-        OrdenTrabajo guardada = repository.save(ot);
+        OrdenTrabajo guardada = repository.saveAndFlush(ot);
         eventHandlers.forEach(handler -> handler.after(guardada, Action.CREATE));
         // Recien creada: no puede tener evidencia todavia.
         return mapper.toResponse(guardada, false);
@@ -99,7 +99,7 @@ public class OrdenTrabajoService {
         var proposed = creationStrategies.resolve(request.getOrigin()).create(request, cuadrilla);
         eventHandlers.forEach(handler -> handler.beforeEdit(ot, proposed));
         mapper.updateEntity(ot, proposed);
-        OrdenTrabajo guardada = repository.save(ot);
+        OrdenTrabajo guardada = repository.saveAndFlush(ot);
         return mapper.toResponse(guardada, evidenciaRepository.existsByOrdenTrabajoId(id));
     }
 
@@ -119,7 +119,7 @@ public class OrdenTrabajoService {
         Cuadrilla cuadrilla = request.getCrew() == null ? ot.getCuadrilla() : resolverCuadrilla(request.getCrew());
         ot.programar(request.getScheduledDate(), cuadrilla);
         eventHandlers.forEach(handler -> handler.after(ot, Action.SCHEDULE));
-        return responderConEvidencia(repository.save(ot));
+        return responderConEvidencia(repository.saveAndFlush(ot));
     }
 
     @Transactional
@@ -134,7 +134,7 @@ public class OrdenTrabajoService {
         eventHandlers.forEach(handler -> handler.before(ot, Action.START));
         ot.iniciar();
         eventHandlers.forEach(handler -> handler.after(ot, Action.START));
-        return responderConEvidencia(repository.save(ot));
+        return responderConEvidencia(repository.saveAndFlush(ot));
     }
 
     @Transactional
@@ -149,7 +149,7 @@ public class OrdenTrabajoService {
         eventHandlers.forEach(handler -> handler.before(ot, Action.PAUSE));
         ot.pausar();
         eventHandlers.forEach(handler -> handler.after(ot, Action.PAUSE));
-        return responderConEvidencia(repository.save(ot));
+        return responderConEvidencia(repository.saveAndFlush(ot));
     }
 
     @Transactional
@@ -164,7 +164,7 @@ public class OrdenTrabajoService {
         eventHandlers.forEach(handler -> handler.before(ot, Action.COMPLETE));
         ot.completar(request.getOutcome());
         eventHandlers.forEach(handler -> handler.after(ot, Action.COMPLETE));
-        return responderConEvidencia(repository.save(ot));
+        return responderConEvidencia(repository.saveAndFlush(ot));
     }
 
     @Transactional
@@ -181,7 +181,7 @@ public class OrdenTrabajoService {
             observacionRepository.save(new Observacion(ot, request.getObservations()));
         }
         ot.validar(Boolean.TRUE.equals(request.getApproved()));
-        return responderConEvidencia(repository.save(ot));
+        return responderConEvidencia(repository.saveAndFlush(ot));
     }
 
     private OrdenTrabajoResponse responderConEvidencia(OrdenTrabajo ot) {
