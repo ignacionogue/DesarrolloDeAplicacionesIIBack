@@ -12,6 +12,31 @@ import java.util.List;
 
 @Service
 public class IntegrationEventQueryService {
+    private static final String COUNT_SQL = """
+            SELECT COUNT(*)
+            FROM (
+                SELECT 'INCOMING' direction FROM event_inbox
+                UNION ALL
+                SELECT 'OUTGOING' direction FROM event_outbox
+            ) events
+            WHERE (? = 'ALL' OR direction = ?)
+            """;
+    private static final String PAGE_SQL = """
+            SELECT *
+            FROM (
+                SELECT CAST(event_id AS VARCHAR) id, 'INCOMING' direction, event_type, source_module,
+                       status, occurred_at, CAST(envelope AS VARCHAR) envelope
+                FROM event_inbox
+                UNION ALL
+                SELECT CAST(event_id AS VARCHAR) id, 'OUTGOING' direction, NULL event_type, NULL source_module,
+                       status, created_at occurred_at, CAST(envelope AS VARCHAR) envelope
+                FROM event_outbox
+            ) events
+            WHERE (? = 'ALL' OR direction = ?)
+            ORDER BY occurred_at DESC
+            LIMIT ? OFFSET ?
+            """;
+
     private final JdbcTemplate jdbc;
     private final ObjectMapper json;
 
@@ -26,15 +51,8 @@ public class IntegrationEventQueryService {
         int safeSize = Math.max(1, Math.min(size, 100));
         String normalized = direction == null ? "ALL" : direction.toUpperCase(java.util.Locale.ROOT);
         if (!List.of("ALL", "INCOMING", "OUTGOING").contains(normalized)) normalized = "ALL";
-        String filter = switch (normalized) {
-            case "INCOMING" -> " WHERE direction='INCOMING' ";
-            case "OUTGOING" -> " WHERE direction='OUTGOING' ";
-            default -> " ";
-        };
-        String union = "SELECT CAST(event_id AS VARCHAR) id,'INCOMING' direction,event_type,source_module,status,occurred_at,CAST(envelope AS VARCHAR) envelope FROM event_inbox " +
-                "UNION ALL SELECT CAST(event_id AS VARCHAR) id,'OUTGOING' direction,NULL event_type,NULL source_module,status,created_at occurred_at,CAST(envelope AS VARCHAR) envelope FROM event_outbox";
-        long total = jdbc.queryForObject("SELECT COUNT(*) FROM (" + union + ") events" + filter, Long.class);
-        var content = jdbc.query("SELECT * FROM (" + union + ") events" + filter + "ORDER BY occurred_at DESC LIMIT ? OFFSET ?",
+        long total = jdbc.queryForObject(COUNT_SQL, Long.class, normalized, normalized);
+        var content = jdbc.query(PAGE_SQL,
                 (rs, row) -> {
                     String eventType = rs.getString("event_type");
                     String sourceModule = rs.getString("source_module");
@@ -50,7 +68,7 @@ public class IntegrationEventQueryService {
                     OffsetDateTime occurredAt = rs.getObject("occurred_at", OffsetDateTime.class);
                     return new IntegrationEventResponse(rs.getString("id"), rs.getString("direction"), eventType,
                             sourceModule, rs.getString("status"), occurredAt);
-                }, safeSize, safePage * safeSize);
+                }, normalized, normalized, safeSize, safePage * safeSize);
         int pages = total == 0 ? 0 : (int) Math.ceil((double) total / safeSize);
         return new PageResponse<>(content, safePage, safeSize, total, pages);
     }
