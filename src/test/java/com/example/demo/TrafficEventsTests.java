@@ -112,6 +112,17 @@ class TrafficEventsTests {
         assertTrue(payload.contains("crossStreet")); assertTrue(payload.contains("latitude")); assertTrue(payload.contains("longitude"));
         assertFalse(payload.contains("00000001"));assertFalse(payload.contains("TEST123"));assertFalse(payload.contains("inspectorId"));
         assertFalse(output.getAll().contains("00000001")); assertFalse(output.getAll().contains("TEST123"));
+        var location=(ObjectNode)d.path("location");
+        e.put("eventId",UUID.randomUUID().toString()); location.put("district","CENTRO");
+        assertThrows(InvalidEventException.class,()->dispatch(e)); location.remove("district");
+        e.put("eventId",UUID.randomUUID().toString()); location.put("crossStreet",123);
+        assertThrows(InvalidEventException.class,()->dispatch(e)); location.put("crossStreet","Calle Ficticia");
+        e.put("eventId",UUID.randomUUID().toString()); location.put("latitude","invalid");
+        assertThrows(InvalidEventException.class,()->dispatch(e)); location.put("latitude",-34.6);
+        e.put("eventId",UUID.randomUUID().toString()); d.put("inspectorId",1001);
+        assertThrows(InvalidEventException.class,()->dispatch(e)); d.put("inspectorId","u-1001");
+        e.put("eventId",UUID.randomUUID().toString()); d.remove("location");
+        assertThrows(InvalidEventException.class,()->dispatch(e)); d.set("location",location);
         e.put("eventId",UUID.randomUUID().toString()); d.put("involvesInfrastructureDamage",false); d.remove("damageDescription"); assertEquals("ignored",dispatch(e));
         d.put("involvesInfrastructureDamage",true); assertThrows(InvalidEventException.class,()->dispatch(e));
     }
