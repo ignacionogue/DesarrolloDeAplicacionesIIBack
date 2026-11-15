@@ -9,10 +9,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.scheduling.annotation.Scheduled;
 import tools.jackson.databind.ObjectMapper;
 import java.time.*;
+import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 @Service
 public class ClosureIntegrationService {
+    private static final DateTimeFormatter EVENT_DATE_TIME =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX");
     private final OrdenTrabajoRepository orders;
     private final StreetClosureRepository legacy;
     private final ClosureIntegrationStore closures;
@@ -39,9 +42,10 @@ public class ClosureIntegrationService {
                 request.requestedFrom().toLocalDate(),request.requestedTo().toLocalDate(),request.reason()));
         var data=json.createObjectNode(); data.put("closureRequestId",closure.getClosureRequestId()).put("sourceModule","obras")
                 .put("sourceRef",order.getIntegrationId().toString()).put("reason",request.reason())
-                .put("requestedFrom",request.requestedFrom().toString()).put("requestedTo",request.requestedTo().toString())
+                .put("requestedFrom",EVENT_DATE_TIME.format(request.requestedFrom()))
+                .put("requestedTo",EVENT_DATE_TIME.format(request.requestedTo()))
                 .put("closureType",request.closureType())
-                .put("requestedAt",OffsetDateTime.now(ZoneOffset.UTC).toString());
+                .put("requestedAt",EVENT_DATE_TIME.format(OffsetDateTime.now(ZoneOffset.UTC)));
         data.set("affectedSections",json.valueToTree(request.affectedSections()));
         if(request.previousClosureRequestId()!=null) data.put("previousClosureRequestId",request.previousClosureRequestId().toString());
         var event=EventEnvelope.outgoing("streetClosureRequested",data,correlation,null);
