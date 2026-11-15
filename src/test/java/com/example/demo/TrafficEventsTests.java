@@ -101,14 +101,17 @@ class TrafficEventsTests {
         e.put("eventId",id.toString()).put("eventType","roadAccidentRegistered").put("eventVersion","1.0")
             .put("occurredAt",OffsetDateTime.now(ZoneOffset.UTC).toString()).put("sourceModule","transito")
             .put("correlationId",UUID.randomUUID().toString());
-        var d=e.putObject("data"); d.put("accidentId",UUID.randomUUID().toString()).put("accidentDateTime",OffsetDateTime.now(ZoneOffset.UTC).toString())
-            .put("involvesInfrastructureDamage",true).put("damageDescription","Semaforo danado").put("inspectorId",UUID.randomUUID().toString());
-        d.putObject("location").put("street","Calle A"); d.putArray("vehicles").addObject().put("ownerNationalId","38765432");
-        d.putArray("persons").addObject().put("nationalId","38765432");
+        var d=e.putObject("data"); d.put("accidentId",UUID.randomUUID().toString()).put("accidentDateTime","2026-11-15T14:10:45-03:00")
+            .put("involvesInfrastructureDamage",true).put("damageDescription","Daño ficticio de prueba en cordón (integración M3)").put("inspectorId","u-1001");
+        d.putObject("location").put("street","Av. de Prueba").put("crossStreet","Calle Ficticia").put("latitude",-34.6).put("longitude",-58.4);
+        d.putArray("vehicles").addObject().put("licensePlate","TEST123").putNull("ownerNationalId");
+        d.putArray("persons").addObject().put("nationalId","00000001").put("injuryLevel","NONE");
         assertEquals("processed",dispatch(e));
         Object raw=jdbc.queryForObject("SELECT payload FROM event_inbox WHERE event_id=?",Object.class,id);
         String payload=raw instanceof byte[] b?new String(b,StandardCharsets.UTF_8):raw.toString();
-        assertFalse(payload.contains("38765432"));assertFalse(payload.contains("inspectorId"));assertFalse(output.getAll().contains("38765432"));
+        assertTrue(payload.contains("crossStreet")); assertTrue(payload.contains("latitude")); assertTrue(payload.contains("longitude"));
+        assertFalse(payload.contains("00000001"));assertFalse(payload.contains("TEST123"));assertFalse(payload.contains("inspectorId"));
+        assertFalse(output.getAll().contains("00000001")); assertFalse(output.getAll().contains("TEST123"));
         e.put("eventId",UUID.randomUUID().toString()); d.put("involvesInfrastructureDamage",false); d.remove("damageDescription"); assertEquals("ignored",dispatch(e));
         d.put("involvesInfrastructureDamage",true); assertThrows(InvalidEventException.class,()->dispatch(e));
     }
