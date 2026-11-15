@@ -52,5 +52,15 @@ class IntegrationApiTests {
         assertEquals(400,post(path,"PERSONAL_OBRAS",body.replace(",\"closureType\":\"TOTAL\"","")).statusCode());
         var invalid=(ObjectNode)json.readTree(body); invalid.putArray("affectedSections").addNull();
         assertEquals(400,post(path,"PERSONAL_OBRAS",invalid.toString()).statusCode());
+        var order=post("/api/public-works/work-orders","PERSONAL_OBRAS",
+                "{\"origin\":\"MANUAL\",\"description\":\"Corte integrado\",\"priority\":\"ALTA\"}");
+        assertEquals(201,order.statusCode());
+        var validBody=body.replace("\"workOrderId\":1",
+                "\"workOrderId\":"+json.readTree(order.body()).path("id").asLong());
+        var accepted=post(path,"PERSONAL_OBRAS",validBody);
+        assertEquals(201,accepted.statusCode());
+        var stored=json.readTree(accepted.body()).path("request");
+        assertEquals("2026-10-21T13:00:00Z",stored.path("requestedFrom").asString());
+        assertEquals("2026-10-21T14:00:00Z",stored.path("requestedTo").asString());
     }
 }
