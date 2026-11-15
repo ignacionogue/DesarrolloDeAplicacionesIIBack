@@ -41,7 +41,7 @@ class TrafficEventsTests {
     ObjectNode event(String type,ClosureIntegrationStore.Closure closure,OffsetDateTime from,OffsetDateTime to) {
         var event=json.createObjectNode(); event.put("eventId",UUID.randomUUID().toString()).put("eventType",type).put("eventVersion","1.0")
             .put("occurredAt",OffsetDateTime.now(ZoneOffset.UTC).toString()).put("sourceModule","transito").put("correlationId",closure.correlationId().toString());
-        if(type.equals("streetClosureApproved") || type.equals("streetClosureRejected"))
+        if(type.equals("streetClosureApproved") || type.equals("streetClosureRejected") || type.equals("streetClosureEnded"))
             event.put("causationId",closure.requestEventId().toString());
         var data=event.putObject("data"); data.put("closureRequestId",closure.requestId().toString());
         if(type.equals("streetClosureApproved")) {
@@ -54,7 +54,7 @@ class TrafficEventsTests {
         return event;
     }
     String dispatch(ObjectNode event) {return dispatcher.dispatch(event.toString().getBytes(StandardCharsets.UTF_8));}
-    @Test void normalCycleStoresConditionsAndEndsWithoutCausation() {
+    @Test void normalCycleStoresConditionsAndEndsWithOriginalRequestCausation() {
         Long id=order(); var closure=request(id,null); var now=OffsetDateTime.now(ZoneOffset.UTC);
         assertThrows(InvalidStateTransitionException.class,()->orders.iniciar(id));
         var approved=event("streetClosureApproved",closure,now.minusMinutes(1),now.plusHours(1));
@@ -62,7 +62,7 @@ class TrafficEventsTests {
         var current=closures.get(closure.requestId()); assertEquals("ACTIVE",current.state());
         assertEquals(1,current.authorization().path("conditions").size()); assertEquals(1,current.authorization().path("detours").size());
         assertEquals("EN_EJECUCION",orders.iniciar(id).status());
-        var ended=event("streetClosureEnded",closure,null,null); ended.putNull("causationId");
+        var ended=event("streetClosureEnded",closure,null,null);
         assertEquals("rejected",dispatch(ended));
         assertEquals("ACTIVE",closures.get(closure.requestId()).state());
         ended.put("eventId",UUID.randomUUID().toString());
@@ -72,6 +72,26 @@ class TrafficEventsTests {
         approved.put("eventId",UUID.randomUUID().toString()); dispatch(approved);
         assertEquals("ENDED",closures.get(closure.requestId()).state());
         assertNotNull(closures.get(closure.requestId()).completion().path("completionDateTime"));
+    }
+    @Test void endedRequiresAndValidatesOriginalRequestCausation() {
+        var now=OffsetDateTime.now(ZoneOffset.UTC); Long id=order(); var closure=request(id,null);
+        var approved=event("streetClosureApproved",closure,now.minusMinutes(1),now.plusHours(1));
+        assertEquals("processed",dispatch(approved));
+        var current=closures.get(closure.requestId());
+
+        var missing=event("streetClosureEnded",closure,null,null); missing.remove("causationId");
+        ((ObjectNode)missing.path("data")).set("streetClosureId",current.authorization().path("streetClosureId"));
+        assertThrows(InvalidEventException.class,()->dispatch(missing));
+
+        var wrong=event("streetClosureEnded",closure,null,null); wrong.put("causationId",UUID.randomUUID().toString());
+        ((ObjectNode)wrong.path("data")).set("streetClosureId",current.authorization().path("streetClosureId"));
+        assertEquals("rejected",dispatch(wrong));
+        assertEquals("ACTIVE",closures.get(closure.requestId()).state());
+
+        var valid=event("streetClosureEnded",closure,null,null);
+        ((ObjectNode)valid.path("data")).set("streetClosureId",current.authorization().path("streetClosureId"));
+        assertEquals("processed",dispatch(valid));
+        assertEquals("ENDED",closures.get(closure.requestId()).state());
     }
     @Test void authorizedEndOverridesRequestedEndAndFutureWindowDoesNotUnlock() {
         var now=OffsetDateTime.now(ZoneOffset.UTC); Long id=order(); var c=request(id,null);
