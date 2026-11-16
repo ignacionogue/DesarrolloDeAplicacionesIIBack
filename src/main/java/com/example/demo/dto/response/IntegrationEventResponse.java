@@ -8,5 +8,8 @@ public record IntegrationEventResponse(
         String eventType,
         String sourceModule,
         String status,
-        OffsetDateTime occurredAt
+        String correlationId,
+        OffsetDateTime occurredAt,
+        OffsetDateTime processedAt,
+        String error
 ) { }
