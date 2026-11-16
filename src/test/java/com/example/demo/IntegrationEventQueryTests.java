@@ -1,6 +1,7 @@
 package com.example.demo;
 
 import com.example.demo.infrastructure.integration.JsonSql;
+import com.example.demo.service.IntegrationEventQueryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +26,7 @@ class IntegrationEventQueryTests {
     @Autowired ObjectMapper json;
     @Autowired JdbcTemplate jdbc;
     @Autowired JsonSql jsonSql;
+    @Autowired IntegrationEventQueryService integrationEvents;
 
     @BeforeEach void seedEvents() {
         jdbc.update("DELETE FROM event_outbox");
@@ -40,6 +42,17 @@ class IntegrationEventQueryTests {
         assertPage("ALL", 1, 2, 4, 2, "outgoing-old", "incoming-old");
         assertPage("INCOMING", 0, 1, 2, 2, "incoming-new");
         assertPage("OUTGOING", 0, 2, 2, 1, "outgoing-new", "outgoing-old");
+    }
+
+    @Test void queryNormalizesInvalidFiltersAndPaginationBounds() {
+        var minimums = integrationEvents.list(-1, 0, null);
+        assertEquals(0, minimums.page());
+        assertEquals(1, minimums.size());
+        assertEquals(4, minimums.totalElements());
+
+        var maximums = integrationEvents.list(0, 101, "unsupported");
+        assertEquals(100, maximums.size());
+        assertEquals(4, maximums.content().size());
     }
 
     private void assertPage(String direction, int pageNumber, int size, int total, int totalPages,
