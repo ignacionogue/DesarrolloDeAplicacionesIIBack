@@ -172,8 +172,14 @@ public class ProyectoObra {
         this.activityStatus = EstadoActividad.SIN_INICIAR;
     }
 
-    public void rechazar() {
+    public void rechazar(String observations) {
+        this.approvalObservations = observations;
         this.approvalStatus = EstadoAprobacion.RECHAZADO;
+    }
+
+    /** Compatibilidad para construccion directa del modelo en pruebas internas. */
+    public void rechazar() {
+        rechazar(null);
     }
 
     public void finalizar() {

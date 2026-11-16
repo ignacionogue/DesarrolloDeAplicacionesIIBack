@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import com.example.demo.dto.request.ProyectoObraRequest;
 import com.example.demo.dto.request.ProjectApprovalRequest;
+import com.example.demo.dto.request.ProjectRejectionRequest;
 import com.example.demo.dto.response.PageResponse;
 import com.example.demo.dto.response.ProyectoObraResponse;
 import com.example.demo.exception.InvalidStateTransitionException;
@@ -130,16 +131,16 @@ public class ProyectoObraService {
     }
 
     @Transactional
-    public ProyectoObraResponse rechazar(Long id) {
-        return rechazar(id, null);
+    public ProyectoObraResponse rechazar(Long id, ProjectRejectionRequest request) {
+        return rechazar(id, request, null);
     }
 
     @Transactional
-    public ProyectoObraResponse rechazar(Long id, Long expectedVersion) {
+    public ProyectoObraResponse rechazar(Long id, ProjectRejectionRequest request, Long expectedVersion) {
         ProyectoObra proyecto = buscarOrFallar(id);
         proyecto.requireVersion(expectedVersion);
         validarTransicion(proyecto, EstadoAprobacion.PENDIENTE_APROBACION, "rechazar");
-        proyecto.rechazar();
+        proyecto.rechazar(request.observations());
         return mapper.toResponse(repository.saveAndFlush(proyecto));
     }
 

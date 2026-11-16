@@ -79,6 +79,16 @@ class AuthApprovalReviewTests {
                 .signWith(Keys.hmacShaKeyFor("test-secret-for-jwt-signing-with-at-least-32-bytes".getBytes(StandardCharsets.UTF_8))).compact();
         assertEquals(401, call("GET", "/api/public-works/projects", null, wrongIssuer).statusCode());
     }
+
+    @Test void unsignedAlgNoneTokenIsRejected() throws Exception {
+        String header = java.util.Base64.getUrlEncoder().withoutPadding()
+                .encodeToString("{\"alg\":\"none\",\"typ\":\"JWT\"}".getBytes(StandardCharsets.UTF_8));
+        String payload = java.util.Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(("{\"iss\":\"obras-publicas-test\",\"sub\":\"review.user\"," +
+                        "\"role\":\"RESPONSABLE_AUTORIZADO\",\"exp\":4102444800}")
+                        .getBytes(StandardCharsets.UTF_8));
+        assertEquals(401, call("GET", "/api/public-works/projects", null, header + "." + payload + ".").statusCode());
+    }
     @Test void loginFailureUsesApiErrorContract() throws Exception {
         var r = call("POST", "/api/auth/login", "{\"username\":\"test.user\",\"password\":\"wrong\"}", null);
         assertEquals(401, r.statusCode());
@@ -130,8 +140,22 @@ class AuthApprovalReviewTests {
         assertEquals(409, call("PATCH", path + "/approve", approval(""), approver).statusCode());
         assertEquals(200, call("PATCH", path + "/submit-approval", null, personal).statusCode());
         assertEquals(409, call("PATCH", path + "/submit-approval", null, personal).statusCode());
-        assertEquals(200, call("PATCH", path + "/reject", null, approver).statusCode());
+        assertEquals(400, call("PATCH", path + "/reject", null, approver).statusCode());
+        assertEquals(400, call("PATCH", path + "/reject", "{\"observations\":\"  \"}", approver).statusCode());
+        assertEquals(400, call("PATCH", path + "/reject", "{\"observations\":\"" + "x".repeat(1001) + "\"}", approver).statusCode());
+        assertEquals(200, call("PATCH", path + "/reject", "{\"observations\":\"Presupuesto insuficiente\"}", approver).statusCode());
+        assertEquals("Presupuesto insuficiente", projects.findById(json.readTree(created.body()).get("id").asLong())
+                .orElseThrow().getApprovalObservations());
         assertEquals(409, call("PATCH", path + "/approve", approval(""), approver).statusCode());
+    }
+
+    @Test void projectTextLimitsReturn400InsteadOfDatabase500() throws Exception {
+        var token = jwt.issueToken("personal", "PERSONAL_OBRAS");
+        var base = "{\"name\":\"Proyecto largo\",\"estimatedBudget\":1000,\"estimatedStartDate\":\"2026-09-22\",\"estimatedDurationDays\":30,\"description\":\"%s\"}";
+        assertEquals(201, call("POST", "/api/public-works/projects", base.formatted("x".repeat(301)), token).statusCode());
+        var oversized = call("POST", "/api/public-works/projects", base.formatted("x".repeat(1001)), token);
+        assertEquals(400, oversized.statusCode(), oversized.body());
+        assertEquals("VALIDATION_ERROR", json.readTree(oversized.body()).get("code").asText());
     }
 
     @Test void generalEditCannotOverwriteOrEraseApprovedTerms() throws Exception {

@@ -78,10 +78,9 @@ public class OrdenTrabajoController {
     @PatchMapping("/{id}/complete")
     @Operation(summary = "EN_EJECUCION/PAUSADA -> COMPLETADA")
     public ResponseEntity<OrdenTrabajoResponse> completar(@PathVariable Long id,
-                                                           @Valid @RequestBody(required = false) CompleteOTRequest request,
+                                                           @Valid @RequestBody CompleteOTRequest request,
                                                            @RequestHeader(value = "If-Match", required = false) String ifMatch) {
-        return versioned(service.completar(id, request != null ? request : new CompleteOTRequest(),
-                EtagPreconditions.parse(ifMatch)));
+        return versioned(service.completar(id, request, EtagPreconditions.parse(ifMatch)));
     }
 
     @PatchMapping("/{id}/validate")
