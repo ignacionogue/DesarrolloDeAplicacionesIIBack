@@ -2,6 +2,7 @@ package com.example.demo.dto.request;
 
 public class CompleteOTRequest {
 
+    @jakarta.validation.constraints.NotBlank(message = "El resultado es obligatorio")
     @jakarta.validation.constraints.Size(max = 1000)
     private String outcome;
 

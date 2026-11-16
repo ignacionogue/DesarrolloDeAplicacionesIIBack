@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -18,12 +19,16 @@ import java.time.LocalDate;
 public class ProyectoObraRequest {
 
     @NotBlank(message = "El nombre es obligatorio")
+    @Size(max = 200, message = "El nombre no puede superar 200 caracteres")
     private String name;
 
+    @Size(max = 1000, message = "La descripcion no puede superar 1000 caracteres")
     private String description;
 
+    @Size(max = 1000, message = "El alcance no puede superar 1000 caracteres")
     private String scope;
 
+    @Size(max = 300, message = "La ubicacion no puede superar 300 caracteres")
     private String location;
 
     @NotNull(message = "El presupuesto estimado es obligatorio")
@@ -50,8 +55,10 @@ public class ProyectoObraRequest {
     @Max(value = 100, message = "El avance fisico no puede superar 100")
     private Integer physicalProgress;
 
+    @Size(max = 200, message = "El responsable tecnico no puede superar 200 caracteres")
     private String technicalManager;
 
+    @Size(max = 200, message = "El contratista no puede superar 200 caracteres")
     private String contractor;
 
     public String getName() {

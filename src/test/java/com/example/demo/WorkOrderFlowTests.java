@@ -135,6 +135,21 @@ class WorkOrderFlowTests {
         assertEquals(409, call("PATCH", path + "/validate", "{\"approved\":true}", "INSPECTOR_OBRA").statusCode());
     }
 
+    @Test void completionRequiresOutcomeButNotPhotographicEvidence() throws Exception {
+        var path = BASE + "/" + create("MANUAL", null);
+        transition(path, "schedule", "{\"scheduledDate\":\"2026-09-22\"}", "JEFE_CUADRILLA", "PROGRAMADA");
+        transition(path, "start", null, "JEFE_CUADRILLA", "EN_EJECUCION");
+        for (String invalid : new String[]{null, "{}", "{\"outcome\":null}", "{\"outcome\":\"  \"}"}) {
+            var response = call("PATCH", path + "/complete", invalid, "OPERARIO_CONTRATISTA");
+            assertEquals(400, response.statusCode(), String.valueOf(invalid) + " " + response.body());
+            assertEquals(EstadoOT.EN_EJECUCION, orders.findById(Long.parseLong(path.substring(path.lastIndexOf('/') + 1))).orElseThrow().getStatus());
+        }
+        var completed = call("PATCH", path + "/complete", "{\"outcome\":\"Trabajo terminado sin fotografia\"}", "OPERARIO_CONTRATISTA");
+        assertEquals(200, completed.statusCode(), completed.body());
+        assertEquals("COMPLETADA", json.readTree(completed.body()).get("status").asText());
+        assertFalse(json.readTree(completed.body()).get("hasEvidence").asBoolean());
+    }
+
     private void transition(String path, String action, String body, String role, String expected) throws Exception {
         var result = call("PATCH", path + "/" + action, body, role);
         assertEquals(200, result.statusCode(), result.body());

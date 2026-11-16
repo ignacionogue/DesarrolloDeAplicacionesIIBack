@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.dto.request.ProyectoObraRequest;
 import com.example.demo.dto.request.ProjectApprovalRequest;
+import com.example.demo.dto.request.ProjectRejectionRequest;
 import com.example.demo.dto.response.PageResponse;
 import com.example.demo.dto.response.ProyectoObraResponse;
 import com.example.demo.service.ProyectoObraService;
@@ -68,8 +69,9 @@ public class ProyectoObraController {
     @PatchMapping("/{id}/reject")
     @Operation(summary = "PENDIENTE_APROBACION -> RECHAZADO")
     public ResponseEntity<ProyectoObraResponse> rechazar(@PathVariable Long id,
+            @Valid @RequestBody ProjectRejectionRequest request,
             @RequestHeader(value = "If-Match", required = false) String ifMatch) {
-        return versioned(service.rechazar(id, EtagPreconditions.parse(ifMatch)));
+        return versioned(service.rechazar(id, request, EtagPreconditions.parse(ifMatch)));
     }
 
     @PatchMapping("/{id}/complete")
