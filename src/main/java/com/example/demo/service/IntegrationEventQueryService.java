@@ -60,14 +60,10 @@ public class IntegrationEventQueryService {
                     String sourceModule = rs.getString("source_module");
                     String correlationId = rs.getString("correlation_id");
                     if (eventType == null || sourceModule == null || correlationId == null) {
-                        try {
-                            var envelope = json.readTree(rs.getString("envelope"));
-                            if (eventType == null) eventType = envelope.path("eventType").asText(null);
-                            if (sourceModule == null) sourceModule = envelope.path("sourceModule").asText(null);
-                            if (correlationId == null) correlationId = envelope.path("correlationId").asText(null);
-                        } catch (Exception ignored) {
-                            // The operational list remains useful without optional envelope labels.
-                        }
+                        var envelope = json.readTree(rs.getString("envelope"));
+                        if (eventType == null) eventType = envelope.path("eventType").asText(null);
+                        if (sourceModule == null) sourceModule = envelope.path("sourceModule").asText(null);
+                        if (correlationId == null) correlationId = envelope.path("correlationId").asText(null);
                     }
                     OffsetDateTime occurredAt = rs.getObject("occurred_at", OffsetDateTime.class);
                     OffsetDateTime processedAt = rs.getObject("processed_at", OffsetDateTime.class);
