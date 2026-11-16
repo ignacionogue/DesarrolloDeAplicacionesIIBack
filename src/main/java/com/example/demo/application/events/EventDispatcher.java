@@ -16,6 +16,7 @@ public class EventDispatcher {
         EventEnvelope event=null;
         try {
             event=codec.decode(bytes);
+            if (event == null) throw new InvalidEventException();
             return dispatchDecoded(event);
         } catch(RuntimeException failure) {
             metrics.result("error",event);

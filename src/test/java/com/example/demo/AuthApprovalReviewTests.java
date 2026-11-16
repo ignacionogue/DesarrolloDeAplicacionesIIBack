@@ -24,6 +24,7 @@ class AuthApprovalReviewTests {
     @LocalServerPort int port;
     @Autowired TestUsers jwt;
     @Autowired ProyectoObraRepository projects;
+    @Autowired com.example.demo.repository.AppUserRepository users;
     @Autowired tools.jackson.databind.ObjectMapper json;
     private HttpResponse<String> call(String method, String path, String body, String token) throws Exception {
         var builder = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
@@ -65,10 +66,18 @@ class AuthApprovalReviewTests {
         assertEquals(401, call("GET", "/api/public-works/projects", null, "invalid.token.signature").statusCode());
     }
     @Test void expiredTokenIsRejected() throws Exception {
-        String expired = Jwts.builder().subject("test.user").claim("role", "RESPONSABLE_AUTORIZADO")
+        String expired = Jwts.builder().issuer("obras-publicas-test").subject("test.user").claim("role", "RESPONSABLE_AUTORIZADO")
                 .expiration(Date.from(Instant.now().minusSeconds(60)))
                 .signWith(Keys.hmacShaKeyFor("test-secret-for-jwt-signing-with-at-least-32-bytes".getBytes(StandardCharsets.UTF_8))).compact();
         assertEquals(401, call("GET", "/api/public-works/projects", null, expired).statusCode());
+    }
+    @Test void tokenFromUnexpectedIssuerIsRejected() throws Exception {
+        var user = users.findByUsername("review.user").orElseThrow();
+        String wrongIssuer = Jwts.builder().issuer("otro-modulo").subject(user.getUsername())
+                .claim("uid", user.getId()).claim("role", user.getRole()).claim("ver", user.getTokenVersion())
+                .issuedAt(new Date()).expiration(Date.from(Instant.now().plusSeconds(300)))
+                .signWith(Keys.hmacShaKeyFor("test-secret-for-jwt-signing-with-at-least-32-bytes".getBytes(StandardCharsets.UTF_8))).compact();
+        assertEquals(401, call("GET", "/api/public-works/projects", null, wrongIssuer).statusCode());
     }
     @Test void loginFailureUsesApiErrorContract() throws Exception {
         var r = call("POST", "/api/auth/login", "{\"username\":\"test.user\",\"password\":\"wrong\"}", null);

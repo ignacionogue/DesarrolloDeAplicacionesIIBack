@@ -68,8 +68,10 @@ ni recuperación de contraseña. La administración y rotación posterior requie
 un caso de uso autorizado adicional o identidad central; no modificar tablas
 manualmente en Azure para resolverlo.
 
-DB_URL, DB_USERNAME, DB_PASSWORD y JWT_SECRET conservan su función. Proxy `/api`,
-CORS y despliegue siguen a cargo de DevOps. No hay cambios en frontend ni pipelines.
+DB_URL, DB_USERNAME, DB_PASSWORD y JWT_SECRET conservan su función. `JWT_ISSUER`
+identifica al backend emisor (`obras-publicas` por defecto): los tokens con un
+`iss` diferente se rechazan aunque su firma sea válida. Proxy `/api`, CORS y
+despliegue siguen a cargo de DevOps. No hay cambios en frontend ni pipelines.
 
 ## Validación local (20/09/2026)
 
