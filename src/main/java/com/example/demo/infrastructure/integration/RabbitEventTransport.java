@@ -6,6 +6,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.connection.CorrelationData;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
+import org.slf4j.LoggerFactory;
 
 public class RabbitEventTransport implements EventTransport {
     private final RabbitTemplate template;
@@ -26,6 +27,9 @@ public class RabbitEventTransport implements EventTransport {
             template.send(exchange,"",new Message(codec.encode(event).getBytes(StandardCharsets.UTF_8),properties),confirmation);
             if (!confirmation.getFuture().get(10,TimeUnit.SECONDS).ack() || confirmation.getReturned()!=null)
                 throw new IllegalStateException("PUBLICATION_NOT_CONFIRMED");
+            LoggerFactory.getLogger(RabbitEventTransport.class).atInfo()
+                    .addKeyValue("eventId",event.eventId()).addKeyValue("eventType",event.eventType())
+                    .addKeyValue("result","confirmed").log("AMQP publication confirmed");
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt(); throw new IllegalStateException("PUBLICATION_INTERRUPTED");
         } catch (Exception ex) {
