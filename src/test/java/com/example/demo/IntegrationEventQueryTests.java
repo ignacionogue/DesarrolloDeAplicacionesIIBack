@@ -55,6 +55,18 @@ class IntegrationEventQueryTests {
         assertEquals(4, maximums.content().size());
     }
 
+    @Test void queryReadsMissingIncomingCorrelationFromEnvelope() {
+        UUID expected = UUID.randomUUID();
+        jdbc.update("UPDATE event_inbox SET correlation_id=NULL, envelope=CAST(? AS JSONB) WHERE event_type=?",
+                jsonSql.parameter("{\"correlationId\":\"" + expected + "\"}"), "incoming-new");
+
+        var event = integrationEvents.list(0, 100, "INCOMING").content().stream()
+                .filter(item -> "incoming-new".equals(item.eventType()))
+                .findFirst().orElseThrow();
+
+        assertEquals(expected.toString(), event.correlationId());
+    }
+
     private void assertPage(String direction, int pageNumber, int size, int total, int totalPages,
                             String... expectedTypes) throws Exception {
         var response = HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create(
