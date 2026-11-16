@@ -1,6 +1,7 @@
 package com.example.demo;
 
 import com.example.demo.infrastructure.integration.JsonSql;
+import com.example.demo.service.IntegrationEventQueryService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +26,7 @@ class IntegrationEventQueryTests {
     @Autowired ObjectMapper json;
     @Autowired JdbcTemplate jdbc;
     @Autowired JsonSql jsonSql;
+    @Autowired IntegrationEventQueryService integrationEvents;
 
     @BeforeEach void seedEvents() {
         jdbc.update("DELETE FROM event_outbox");
@@ -40,6 +42,29 @@ class IntegrationEventQueryTests {
         assertPage("ALL", 1, 2, 4, 2, "outgoing-old", "incoming-old");
         assertPage("INCOMING", 0, 1, 2, 2, "incoming-new");
         assertPage("OUTGOING", 0, 2, 2, 1, "outgoing-new", "outgoing-old");
+    }
+
+    @Test void queryNormalizesInvalidFiltersAndPaginationBounds() {
+        var minimums = integrationEvents.list(-1, 0, null);
+        assertEquals(0, minimums.page());
+        assertEquals(1, minimums.size());
+        assertEquals(4, minimums.totalElements());
+
+        var maximums = integrationEvents.list(0, 101, "unsupported");
+        assertEquals(100, maximums.size());
+        assertEquals(4, maximums.content().size());
+    }
+
+    @Test void queryReadsMissingIncomingCorrelationFromEnvelope() {
+        UUID expected = UUID.randomUUID();
+        jdbc.update("UPDATE event_inbox SET correlation_id=NULL, envelope=CAST(? AS JSONB) WHERE event_type=?",
+                jsonSql.parameter("{\"correlationId\":\"" + expected + "\"}"), "incoming-new");
+
+        var event = integrationEvents.list(0, 100, "INCOMING").content().stream()
+                .filter(item -> "incoming-new".equals(item.eventType()))
+                .findFirst().orElseThrow();
+
+        assertEquals(expected.toString(), event.correlationId());
     }
 
     private void assertPage(String direction, int pageNumber, int size, int total, int totalPages,
@@ -62,21 +87,26 @@ class IntegrationEventQueryTests {
             assertTrue(event.path("direction").asText().matches("INCOMING|OUTGOING"));
             assertTrue(event.has("id"));
             assertTrue(event.has("status"));
+            assertFalse(event.path("correlationId").asText().isBlank());
+            assertFalse(event.path("occurredAt").asText().isBlank());
+            assertFalse(event.path("processedAt").asText().isBlank());
+            assertTrue(event.path("error").isNull());
         }
     }
 
     private void insertIncoming(OffsetDateTime occurredAt, String eventType) {
         UUID id = UUID.randomUUID();
-        jdbc.update("INSERT INTO event_inbox(event_id,event_type,event_version,source_module,occurred_at,payload,envelope,status) " +
-                        "VALUES (?,?,?,?,?,CAST(? AS JSONB),CAST(? AS JSONB),?)", id, eventType, "1.0", "TEST", occurredAt,
-                jsonSql.parameter("{}"), jsonSql.parameter("{}"), "RECEIVED");
+        jdbc.update("INSERT INTO event_inbox(event_id,event_type,event_version,source_module,correlation_id,occurred_at,payload,envelope,status,processed_at) " +
+                        "VALUES (?,?,?,?,?,?,CAST(? AS JSONB),CAST(? AS JSONB),?,?)", id, eventType, "1.0", "TEST",
+                UUID.randomUUID(), occurredAt, jsonSql.parameter("{}"), jsonSql.parameter("{}"), "PROCESSED", occurredAt.plusSeconds(1));
     }
 
     private void insertOutgoing(OffsetDateTime createdAt, String eventType) {
         UUID id = UUID.randomUUID();
-        String envelope = "{\"eventType\":\"" + eventType + "\",\"sourceModule\":\"TEST\"}";
-        jdbc.update("INSERT INTO event_outbox(id,event_id,ordering_key,envelope,payload,status,created_at) " +
-                        "VALUES (?,?,?,CAST(? AS JSONB),CAST(? AS JSONB),?,?)", UUID.randomUUID(), id, "test:" + id,
-                jsonSql.parameter(envelope), jsonSql.parameter("{}"), "PENDING", createdAt);
+        String envelope = "{\"eventType\":\"" + eventType + "\",\"sourceModule\":\"TEST\",\"correlationId\":\""
+                + UUID.randomUUID() + "\"}";
+        jdbc.update("INSERT INTO event_outbox(id,event_id,ordering_key,envelope,payload,status,created_at,published_at) " +
+                        "VALUES (?,?,?,CAST(? AS JSONB),CAST(? AS JSONB),?,?,?)", UUID.randomUUID(), id, "test:" + id,
+                jsonSql.parameter(envelope), jsonSql.parameter("{}"), "PUBLISHED", createdAt, createdAt.plusSeconds(1));
     }
 }

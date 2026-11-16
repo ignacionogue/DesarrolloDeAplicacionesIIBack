@@ -25,11 +25,13 @@ public class IntegrationEventQueryService {
             SELECT *
             FROM (
                 SELECT CAST(event_id AS VARCHAR) id, 'INCOMING' direction, event_type, source_module,
-                       status, occurred_at, CAST(envelope AS VARCHAR) envelope
+                       status, CAST(correlation_id AS VARCHAR) correlation_id, occurred_at,
+                       processed_at, error, CAST(envelope AS VARCHAR) envelope
                 FROM event_inbox
                 UNION ALL
                 SELECT CAST(event_id AS VARCHAR) id, 'OUTGOING' direction, NULL event_type, NULL source_module,
-                       status, created_at occurred_at, CAST(envelope AS VARCHAR) envelope
+                       status, NULL correlation_id, created_at occurred_at,
+                       published_at processed_at, last_error error, CAST(envelope AS VARCHAR) envelope
                 FROM event_outbox
             ) events
             WHERE (? = 'ALL' OR direction = ?)
@@ -56,18 +58,18 @@ public class IntegrationEventQueryService {
                 (rs, row) -> {
                     String eventType = rs.getString("event_type");
                     String sourceModule = rs.getString("source_module");
-                    if (eventType == null || sourceModule == null) {
-                        try {
-                            var envelope = json.readTree(rs.getString("envelope"));
-                            if (eventType == null) eventType = envelope.path("eventType").asText(null);
-                            if (sourceModule == null) sourceModule = envelope.path("sourceModule").asText(null);
-                        } catch (Exception ignored) {
-                            // The operational list remains useful without optional envelope labels.
-                        }
+                    String correlationId = rs.getString("correlation_id");
+                    if (eventType == null || sourceModule == null || correlationId == null) {
+                        var envelope = json.readTree(rs.getString("envelope"));
+                        if (eventType == null) eventType = envelope.path("eventType").asText(null);
+                        if (sourceModule == null) sourceModule = envelope.path("sourceModule").asText(null);
+                        if (correlationId == null) correlationId = envelope.path("correlationId").asText(null);
                     }
                     OffsetDateTime occurredAt = rs.getObject("occurred_at", OffsetDateTime.class);
+                    OffsetDateTime processedAt = rs.getObject("processed_at", OffsetDateTime.class);
                     return new IntegrationEventResponse(rs.getString("id"), rs.getString("direction"), eventType,
-                            sourceModule, rs.getString("status"), occurredAt);
+                            sourceModule, rs.getString("status"), correlationId, occurredAt,
+                            processedAt, rs.getString("error"));
                 }, normalized, normalized, safeSize, safePage * safeSize);
         int pages = total == 0 ? 0 : (int) Math.ceil((double) total / safeSize);
         return new PageResponse<>(content, safePage, safeSize, total, pages);
