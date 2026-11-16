@@ -162,4 +162,12 @@ class EventIntegrationFoundationTests {
         new RabbitEventListener(failing,telemetry).onMessage(new Message(new byte[0],props),channel);
         verify(channel).basicNack(42,false,false); verify(channel,never()).basicAck(anyLong(),anyBoolean());
     }
+    @Test void nullDecodedEnvelopeIsRejectedBeforeDereferencingIt() {
+        var nullCodec=mock(EventSerialization.class);
+        when(nullCodec.decode(any())).thenReturn(null);
+        var telemetry=mock(EventTelemetry.class);
+        var dispatcher=new EventDispatcher(new EventHandlerRegistry(List.of()),mock(EventInbox.class),nullCodec,telemetry,mock(TicketEventValidation.class));
+        assertThrows(InvalidEventException.class,()->dispatcher.dispatch(new byte[0]));
+        verify(telemetry).result(eq("error"),isNull());
+    }
 }

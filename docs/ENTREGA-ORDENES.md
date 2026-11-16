@@ -28,10 +28,11 @@ restricciones de origen. V1/V2 no se modificaron. V3 está implementada como
 migración Java dentro del JAR para localizar el CHECK sin nombre definido en V1
 en PostgreSQL y H2. Ver [MIGRACIONES.md](MIGRACIONES.md).
 
-No hay nuevas variables de entorno. Se conservan DB_URL, DB_USERNAME, DB_PASSWORD,
-JWT_SECRET, AUTH_USERNAME, AUTH_PASSWORD, AUTH_ROLE y JWT_EXPIRATION_MINUTES.
-Ahora AUTH_ROLE debe ser uno de los roles documentados y la duración JWT positiva.
-CORS_ALLOWED_ORIGINS sigue controlando dominios autorizados.
+La actualización de seguridad posterior agrega `JWT_ISSUER`, con valor por defecto
+`obras-publicas`, para emitir y validar el claim `iss`. Se conservan DB_URL,
+DB_USERNAME, DB_PASSWORD, JWT_SECRET, AUTH_USERNAME, AUTH_PASSWORD, AUTH_ROLE y
+JWT_EXPIRATION_MINUTES. AUTH_ROLE debe ser uno de los roles documentados y la
+duración JWT positiva. CORS_ALLOWED_ORIGINS sigue controlando dominios autorizados.
 
 **Actualización posterior al respaldo dd89e98:** se implementó login multiusuario
 en un cambio separado con V4. Ver [USUARIOS.md](USUARIOS.md) para el contrato,

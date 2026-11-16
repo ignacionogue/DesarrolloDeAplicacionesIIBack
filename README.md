@@ -18,6 +18,7 @@ Spring Boot **no carga `.env` automáticamente**: definir variables de entorno
 en la terminal o IDE. En Docker se puede usar `--env-file .env`.
 
 Obligatorias: `DB_URL` (JDBC), `DB_USERNAME`, `DB_PASSWORD` y `JWT_SECRET`.
+`JWT_ISSUER` identifica al emisor esperado y usa `obras-publicas` por defecto; todo token con otro `iss` se rechaza.
 Las cuentas se almacenan en PostgreSQL con contraseñas BCrypt. El secreto opcional
 `AUTH_BOOTSTRAP_USERS` permite crearlas inicialmente; ver [usuarios](docs/USUARIOS.md).
 Ejemplo no sensible de URL: `jdbc:postgresql://localhost:5432/obras_publicas`.

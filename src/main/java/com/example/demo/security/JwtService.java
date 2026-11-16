@@ -34,12 +34,16 @@ public class JwtService {
         if (properties.jwtExpirationMinutes() <= 0) {
             throw new IllegalStateException("JWT_EXPIRATION_MINUTES debe ser positivo.");
         }
+        if (properties.jwtIssuer() == null || properties.jwtIssuer().isBlank()) {
+            throw new IllegalStateException("JWT_ISSUER no puede estar vacio.");
+        }
         signingKey = Keys.hmacShaKeyFor(properties.jwtSecret().getBytes(StandardCharsets.UTF_8));
     }
 
     public String issueToken(com.example.demo.model.AppUser user) {
         Instant now = Instant.now();
         return Jwts.builder()
+                .issuer(properties.jwtIssuer())
                 .subject(user.getUsername())
                 .claim("uid", user.getId())
                 .claim("role", user.getRole())
@@ -51,6 +55,7 @@ public class JwtService {
     }
 
     public Claims parse(String token) {
-        return Jwts.parser().verifyWith(signingKey).build().parseSignedClaims(token).getPayload();
+        return Jwts.parser().verifyWith(signingKey).requireIssuer(properties.jwtIssuer()).build()
+                .parseSignedClaims(token).getPayload();
     }
 }

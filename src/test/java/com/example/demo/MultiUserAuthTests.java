@@ -179,6 +179,6 @@ class MultiUserAuthTests {
     }
 
     private UserBootstrap bootstrap(String value) {
-        return new UserBootstrap(new AuthProperties(properties.jwtSecret(), 30, "", "", "", value), users, passwords, json);
+        return new UserBootstrap(new AuthProperties(properties.jwtSecret(), properties.jwtIssuer(), 30, "", "", "", value), users, passwords, json);
     }
 }
