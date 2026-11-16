@@ -42,9 +42,11 @@ public class MessagingConfiguration {
         var template=new RabbitTemplate(eventConnectionFactory); template.setMandatory(true); return template;
     }
     @Bean EventTransport eventTransport(RabbitTemplate eventRabbitTemplate,EventSerialization codec,Environment env) {
-        return new RabbitEventTransport(eventRabbitTemplate,codec,
+        EventTransport rabbit = new RabbitEventTransport(eventRabbitTemplate,codec,
                 env.getProperty("app.messaging.exchange","muni.inbox"),
                 env.getRequiredProperty("app.messaging.username"));
+        return new SimulatedFailureEventTransport(rabbit,
+                env.getProperty("app.messaging.simulate-publication-failure",Boolean.class,false));
     }
     @Bean SimpleMessageListenerContainer eventListenerContainer(CachingConnectionFactory eventConnectionFactory,
             EventDispatcher dispatcher,EventTelemetry metrics,Environment env) {

@@ -67,6 +67,23 @@ class IntegrationEventQueryTests {
         assertEquals(expected.toString(), event.correlationId());
     }
 
+    @Test void summaryExposesPersistentAndCurrentRevisionMessagingTelemetry() throws Exception {
+        var response = HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create(
+                        "http://localhost:" + port + "/api/public-works/integration-events/summary"))
+                .header("Authorization", "Bearer " + users.issueToken("integration-summary", "INGENIERO_ARQUITECTO"))
+                .GET().build(), HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode(), response.body());
+        var summary = json.readTree(response.body());
+        assertEquals(2, summary.path("received").asLong());
+        assertEquals(2, summary.path("processed").asLong());
+        assertEquals(2, summary.path("published").asLong());
+        assertEquals(0, summary.path("pendingInbox").asLong());
+        assertEquals(0, summary.path("pendingOutbox").asLong());
+        assertTrue(summary.has("duplicateEventsCurrentRevision"));
+        assertTrue(summary.has("nackedEventsCurrentRevision"));
+        assertTrue(summary.has("publicationFailuresCurrentRevision"));
+    }
+
     private void assertPage(String direction, int pageNumber, int size, int total, int totalPages,
                             String... expectedTypes) throws Exception {
         var response = HttpClient.newHttpClient().send(HttpRequest.newBuilder(URI.create(

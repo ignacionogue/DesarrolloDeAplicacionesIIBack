@@ -143,3 +143,8 @@ merge ni despliegue automático desde la PC. Ver [docs/DEVOPS-HANDOFF.md](docs/D
 Docker, pipelines, Azure, permisos y el momento de ejecución de migraciones son
 coordinados con DevOps. Este repositorio entrega el esquema y documenta su impacto.
 Storage de evidencias e integraciones externas siguen pendientes.
+
+`SIMULATE_MESSAGING_FAILURE` es una bandera de resiliencia exclusiva de Azure Test. Su valor
+por defecto es `false`; cuando Terraform la habilita, la API y la Outbox siguen operativas pero
+la publicación saliente falla antes de invocar al cliente RabbitMQ. Nunca debe habilitarse en
+desarrollo ni producción y no modifica el broker compartido.

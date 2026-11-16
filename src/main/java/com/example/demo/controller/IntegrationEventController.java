@@ -1,8 +1,10 @@
 package com.example.demo.controller;
 
 import com.example.demo.dto.response.IntegrationEventResponse;
+import com.example.demo.dto.response.MessagingSummaryResponse;
 import com.example.demo.dto.response.PageResponse;
 import com.example.demo.service.IntegrationEventQueryService;
+import com.example.demo.service.MessagingSummaryService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -12,9 +14,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/public-works/integration-events")
 public class IntegrationEventController {
     private final IntegrationEventQueryService service;
+    private final MessagingSummaryService messagingSummary;
 
-    public IntegrationEventController(IntegrationEventQueryService service) {
+    public IntegrationEventController(IntegrationEventQueryService service, MessagingSummaryService messagingSummary) {
         this.service = service;
+        this.messagingSummary = messagingSummary;
     }
 
     @GetMapping
@@ -23,5 +27,10 @@ public class IntegrationEventController {
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "ALL") String direction) {
         return service.list(page, size, direction);
+    }
+
+    @GetMapping("/summary")
+    public MessagingSummaryResponse summary() {
+        return messagingSummary.summary();
     }
 }
